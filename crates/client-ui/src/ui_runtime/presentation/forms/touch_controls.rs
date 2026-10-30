@@ -4,7 +4,8 @@ use std::sync::Arc;
 
 use json_ui::{Catalog, Context, DataSource, HitRegion, Scalar, ViewState, hit_test};
 use semantic_input::{
-    TouchBounds, TouchContact, TouchControlRegion, TouchMovement, TouchScheme, dpad_vector, touch,
+    DpadPress, TouchBounds, TouchContact, TouchControlRegion, TouchMovement, TouchScheme,
+    dpad_press, touch,
 };
 use ui::{FONT_DESIGN_PIXEL_TEXELS, UiNode, UiPoint};
 use ui_engine::{
@@ -336,12 +337,11 @@ const DPAD_ARROWS: &[(&str, [i8; 2])] = &[
     ("right", [1, 0]),
     ("up_left", [-1, 1]),
     ("up_right", [1, 1]),
-    ("down_left", [-1, -1]),
-    ("down_right", [1, -1]),
 ];
 
-/// Publishes which movement control and action buttons `scheme` shows, and which D-pad arrow
-/// the stick finger in `contacts` holds.
+/// Publishes which movement control and action buttons `scheme` shows, and which D-pad cell
+/// the stick finger in `contacts` holds. The forward diagonals show only while that finger is
+/// in the forward row, as on Bedrock's classic D-pad.
 fn set_scheme_globals(data: &mut DataSource, scheme: TouchScheme, contacts: &[TouchContact]) {
     let dpad = scheme.movement == TouchMovement::Dpad;
     data.set_global("#touch_scheme_dpad", Scalar::Bool(dpad));
@@ -350,18 +350,21 @@ fn set_scheme_globals(data: &mut DataSource, scheme: TouchScheme, contacts: &[To
         "#touch_action_buttons",
         Scalar::Bool(scheme.shows_action_buttons()),
     );
-    let held = contacts
+    let press = contacts
         .iter()
         .find(|contact| contact.hit_id == Some(touch::JOYSTICK))
-        .map(|contact| dpad_vector(contact.delta))
-        .map(|[x, y]| [sign(x), sign(y)]);
+        .map(|contact| dpad_press(contact.delta));
+    let held = match press {
+        Some(DpadPress::Move([x, y])) => Some([sign(x), sign(y)]),
+        _ => None,
+    };
     data.set_global(
         "#touch_dpad_forward",
         Scalar::Bool(held.is_some_and(|[_, y]| y > 0)),
     );
     data.set_global(
-        "#touch_dpad_back",
-        Scalar::Bool(held.is_some_and(|[_, y]| y < 0)),
+        "#touch_dpad_jump_pressed",
+        Scalar::Bool(press == Some(DpadPress::Jump)),
     );
     for &(name, direction) in DPAD_ARROWS {
         data.set_global(

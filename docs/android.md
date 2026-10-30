@@ -97,12 +97,13 @@ server streaming, shader packs and performance still need their own acceptance r
 
 ## Controls
 
-Settings > Touch > Control scheme picks one of four schemes. Classic schemes move with an
-eight-way D-pad and Modern ones with the stick. Tap schemes aim where the finger touches and hide
+Settings > Touch > Control scheme picks one of four schemes. Classic schemes move with a
+D-pad whose centre diamond jumps and whose up-left and up-right diagonals appear while moving
+forward, with the crouch button on the right; Modern ones move with the stick. Tap schemes aim where the finger touches and hide
 the crosshair; crosshair schemes aim at the crosshair. In every scheme except Modern crosshair, a
 still tap outside the buttons uses or places (or attacks the mob the aim is on) and a still hold
 breaks; dragging first only turns. Modern crosshair, the default, keeps dedicated attack and use
-buttons instead. The D-pad's arrows come from the vanilla pack, so rebuild assets after updating
+buttons instead. The D-pad's art comes from the vanilla pack, so rebuild assets after updating
 to see them. Separate fingers hold jump, sneak and sprint; use also opens a held book. The top-right buttons open pause and the inventory,
 and tapping a hotbar slot selects it. Screens without touch handling of their own, such as the
 inventory, containers, server forms, the bed, the sign editor and the credits, take one finger
@@ -194,7 +195,7 @@ These stay keyboard, mouse or controller only: dropping the held item from the h
 block, the emote wheel, the player list, perspective, and mod or server Experience key
 bindings. Also missing are Back during gameplay, clipboard, opening links, Microsoft
 sign-in while the app is in the background, touch scrolling in forms and menus outside Settings,
-and touch control remapping. The touch schemes' hold delay, D-pad dead zone and the classic
+and touch control remapping. The touch schemes' hold delay and the classic
 schemes' reported interaction model are provisional and not yet compared with the native client. Device performance, audio
 and suspend/resume are untested. See
 `plan.md`.

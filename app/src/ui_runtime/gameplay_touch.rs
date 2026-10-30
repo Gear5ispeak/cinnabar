@@ -7,7 +7,8 @@ use bevy::{
     window::{PrimaryWindow, Window},
 };
 use semantic_input::{
-    TouchContact, TouchControlRegion, TouchControlState, TouchMovement, dpad_vector, touch,
+    DpadPress, TouchContact, TouchControlRegion, TouchControlState, TouchMovement, dpad_press,
+    touch,
 };
 
 use crate::semantic_controls::SemanticTouchTargets;
@@ -264,10 +265,14 @@ pub(crate) fn drive_gameplay_touch_targets(
     presentation.set_touch_contacts(held.clone());
     let scheme = presentation.touch_scheme();
     gestures.route(scheme, &held, &lifted, &mut targets);
+    let dpad = scheme.movement == TouchMovement::Dpad;
     let look_scaled = |sample: TouchContact| {
-        if sample.hit_id == Some(touch::JOYSTICK) && scheme.movement == TouchMovement::Dpad {
+        if dpad && sample.hit_id == Some(touch::JOYSTICK) {
             TouchContact {
-                delta: dpad_vector(sample.delta),
+                delta: match dpad_press(sample.delta) {
+                    DpadPress::Move(vector) => vector,
+                    DpadPress::Jump | DpadPress::Nothing => [0.0; 2],
+                },
                 ..sample
             }
         } else if sample.hit_id == Some(touch::LOOK_SURFACE) {
@@ -291,7 +296,7 @@ pub(crate) fn drive_gameplay_touch_targets(
         targets.set_sample(&sample);
     }
     // A lifted contact whose id already carries a new press routes as that press instead.
-    for sample in lifted.into_iter().map(look_scaled) {
+    for sample in lifted.iter().cloned().map(look_scaled) {
         if !held
             .iter()
             .any(|other| other.contact_id == sample.contact_id)
@@ -299,12 +304,50 @@ pub(crate) fn drive_gameplay_touch_targets(
             targets.pulse(sample);
         }
     }
+    if dpad {
+        for jump in held.iter().chain(&lifted).filter_map(dpad_jump) {
+            targets.pulse(jump);
+        }
+    }
+}
+
+/// Synthetic jump contacts carry the D-pad finger's id with this bit set, apart from platform
+/// ids and look-surface action contacts.
+const DPAD_JUMP_CONTACT: u64 = 1 << 62;
+
+/// A finger on the D-pad's centre diamond holds jump through a synthetic contact of its own,
+/// while its stick contact stays put so sliding back onto an arrow moves again.
+fn dpad_jump(sample: &TouchContact) -> Option<TouchContact> {
+    (sample.hit_id == Some(touch::JOYSTICK) && dpad_press(sample.delta) == DpadPress::Jump).then(
+        || TouchContact {
+            contact_id: sample.contact_id | DPAD_JUMP_CONTACT,
+            delta: [0.0; 2],
+            hit_id: Some(touch::JUMP),
+            ..sample.clone()
+        },
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use semantic_input::TouchBounds;
+
+    /// The D-pad's centre holds jump on a contact of its own; an arrow does not.
+    #[test]
+    fn the_dpad_centre_jumps_and_arrows_do_not() {
+        let finger = |delta| TouchContact {
+            contact_id: 4,
+            activity_sequence: 0,
+            position: [0.15, 0.55],
+            delta,
+            hit_id: Some(touch::JOYSTICK),
+        };
+        let jump = dpad_jump(&finger([0.0, 0.1])).unwrap();
+        assert_eq!(jump.hit_id, Some(touch::JUMP));
+        assert_ne!(jump.contact_id, 4);
+        assert!(dpad_jump(&finger([0.0, 0.9])).is_none());
+    }
 
     fn stick(_: [f32; 2]) -> Option<TouchControlRegion> {
         Some(TouchControlRegion {

@@ -73,27 +73,38 @@ impl TouchScheme {
     }
 }
 
-/// Deflection, in stick half-extents, below which a D-pad press moves nowhere.
-const DPAD_DEAD_ZONE: f32 = 0.25;
+/// What a finger on the classic D-pad presses.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum DpadPress {
+    /// The centre diamond.
+    Jump,
+    /// An arrow, as a full-speed movement vector with positive Y forward.
+    Move([f32; 2]),
+    /// A back corner, which has no arrow.
+    Nothing,
+}
 
-/// Snaps a stick deflection to the D-pad's eight digital directions at full speed, matching
-/// a keyboard's normalized diagonal. Positive Y is forward.
+/// The D-pad is a 3x3 grid over the stick's square: arrows on the edges, jump in the centre,
+/// and diagonals only in the two forward corners, as on Bedrock's classic controls.
 #[must_use]
-pub fn dpad_vector(deflection: [f32; 2]) -> [f32; 2] {
-    let [x, y] = deflection;
-    if !(x.is_finite() && y.is_finite()) || x.hypot(y) < DPAD_DEAD_ZONE {
-        return [0.0; 2];
-    }
-    let octant = (y.atan2(x) / std::f32::consts::FRAC_PI_4).round();
-    let angle = octant * std::f32::consts::FRAC_PI_4;
-    let snap = |value: f32| {
-        if value.abs() < 1e-4 {
-            0.0
+pub fn dpad_press(deflection: [f32; 2]) -> DpadPress {
+    let cell = |value: f32| -> i8 {
+        if !value.is_finite() || value.abs() <= 1.0 / 3.0 {
+            0
+        } else if value > 0.0 {
+            1
         } else {
-            value
+            -1
         }
     };
-    [snap(angle.cos()), snap(angle.sin())]
+    let diagonal = std::f32::consts::FRAC_1_SQRT_2;
+    match (cell(deflection[0]), cell(deflection[1])) {
+        (0, 0) => DpadPress::Jump,
+        (x, 0) => DpadPress::Move([f32::from(x), 0.0]),
+        (0, y) => DpadPress::Move([0.0, f32::from(y)]),
+        (_, -1) => DpadPress::Nothing,
+        (x, _) => DpadPress::Move([f32::from(x) * diagonal, diagonal]),
+    }
 }
 
 /// Seconds a still finger is held before it starts breaking. Provisional: not yet measured
@@ -252,15 +263,19 @@ mod tests {
     }
 
     #[test]
-    fn the_dpad_snaps_to_eight_full_speed_directions_outside_its_dead_zone() {
-        assert_eq!(dpad_vector([0.1, 0.1]), [0.0, 0.0]);
-        assert_eq!(dpad_vector([0.1, 0.9]), [0.0, 1.0]);
-        assert_eq!(dpad_vector([-0.8, 0.05]), [-1.0, 0.0]);
-        assert_eq!(dpad_vector([0.0, -0.5]), [0.0, -1.0]);
-        let [x, y] = dpad_vector([0.6, 0.55]);
+    fn the_dpad_grid_jumps_in_the_centre_and_has_only_forward_diagonals() {
+        assert_eq!(dpad_press([0.1, 0.1]), DpadPress::Jump);
+        assert_eq!(dpad_press([0.1, 0.9]), DpadPress::Move([0.0, 1.0]));
+        assert_eq!(dpad_press([-0.8, 0.05]), DpadPress::Move([-1.0, 0.0]));
+        assert_eq!(dpad_press([0.0, -0.5]), DpadPress::Move([0.0, -1.0]));
+        let DpadPress::Move([x, y]) = dpad_press([0.6, 0.55]) else {
+            panic!("the forward corner moves diagonally");
+        };
         assert!((x - std::f32::consts::FRAC_1_SQRT_2).abs() < 1e-5);
         assert!((y - std::f32::consts::FRAC_1_SQRT_2).abs() < 1e-5);
-        assert_eq!(dpad_vector([f32::NAN, 1.0]), [0.0, 0.0]);
+        assert_eq!(dpad_press([-0.6, -0.6]), DpadPress::Nothing);
+        assert_eq!(dpad_press([0.6, -0.6]), DpadPress::Nothing);
+        assert_eq!(dpad_press([f32::NAN, 0.1]), DpadPress::Jump);
     }
 
     #[test]

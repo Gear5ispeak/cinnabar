@@ -168,7 +168,7 @@ fn crosshair_factory_layout_uses_proportional_centers_and_height_based_sizes() {
 }
 
 /// Only modern split keeps the attack and use buttons; every scheme keeps a movement control in
-/// the stick's place, and only the crosshair schemes draw the crosshair.
+/// the stick's place and a sneak button, and only the crosshair schemes draw the crosshair.
 #[test]
 fn schemes_choose_their_action_buttons_and_crosshair() {
     let Some(mut p) = pack_harness::engine_presentation() else {
@@ -188,6 +188,13 @@ fn schemes_choose_their_action_buttons_and_crosshair() {
                 .any(|hit| control_id(hit.pressed.as_deref()) == Some(id))
         };
         assert!(painted(touch::JOYSTICK), "{scheme:?}");
+        assert!(painted(touch::SNEAK), "{scheme:?}");
+        // Classic schemes jump from the D-pad's centre instead of a separate button.
+        assert_eq!(
+            painted(touch::JUMP),
+            scheme.movement == TouchMovement::Joystick,
+            "{scheme:?}"
+        );
         for id in [touch::ATTACK, touch::USE] {
             assert_eq!(painted(id), scheme.shows_action_buttons(), "{scheme:?}");
         }

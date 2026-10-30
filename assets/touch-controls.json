@@ -399,10 +399,10 @@
                     }
                   },
                   {
-                    "dpad_down_left": {
+                    "dpad_jump": {
                       "type": "panel",
-                      "anchor_from": "bottom_left",
-                      "anchor_to": "bottom_left",
+                      "anchor_from": "center",
+                      "anchor_to": "center",
                       "size": [
                         "33.33%",
                         "33.33%"
@@ -411,7 +411,7 @@
                         {
                           "normal": {
                             "type": "image",
-                            "texture": "textures/gui/controls/down_left",
+                            "texture": "textures/gui/controls/jump_dpad",
                             "size": [
                               "100%",
                               "100%"
@@ -421,7 +421,7 @@
                         {
                           "held": {
                             "type": "image",
-                            "texture": "textures/gui/controls/down_left_pressed",
+                            "texture": "textures/gui/controls/jump_dpad_pressed",
                             "size": [
                               "100%",
                               "100%"
@@ -429,63 +429,11 @@
                             "layer": 1,
                             "bindings": [
                               {
-                                "binding_name": "#touch_dpad_down_left_pressed",
+                                "binding_name": "#touch_dpad_jump_pressed",
                                 "binding_name_override": "#visible"
                               }
                             ]
                           }
-                        }
-                      ],
-                      "bindings": [
-                        {
-                          "binding_name": "#touch_dpad_back",
-                          "binding_name_override": "#visible"
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "dpad_down_right": {
-                      "type": "panel",
-                      "anchor_from": "bottom_right",
-                      "anchor_to": "bottom_right",
-                      "size": [
-                        "33.33%",
-                        "33.33%"
-                      ],
-                      "controls": [
-                        {
-                          "normal": {
-                            "type": "image",
-                            "texture": "textures/gui/controls/down_right",
-                            "size": [
-                              "100%",
-                              "100%"
-                            ]
-                          }
-                        },
-                        {
-                          "held": {
-                            "type": "image",
-                            "texture": "textures/gui/controls/down_right_pressed",
-                            "size": [
-                              "100%",
-                              "100%"
-                            ],
-                            "layer": 1,
-                            "bindings": [
-                              {
-                                "binding_name": "#touch_dpad_down_right_pressed",
-                                "binding_name_override": "#visible"
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "bindings": [
-                        {
-                          "binding_name": "#touch_dpad_back",
-                          "binding_name_override": "#visible"
                         }
                       ]
                     }
@@ -529,11 +477,18 @@
           "$control": "cinnabar.touch.jump",
           "$texture": "textures/ui/jump",
           "$held_texture": "textures/ui/jump_pressed",
-          "$held_binding": "#touch_jump_pressed"
+          "$held_binding": "#touch_jump_pressed",
+          "bindings": [
+            {
+              "binding_name": "#touch_scheme_joystick",
+              "binding_name_override": "#visible"
+            }
+          ]
         }
       },
       {
-        "sneak@cinnabar_touch.button": {
+        "sneak": {
+          "type": "button",
           "anchor_from": "center",
           "anchor_to": "center",
           "offset": [
@@ -544,10 +499,106 @@
             "100%y",
             "13.75%"
           ],
+          "layer": 10,
           "$control": "cinnabar.touch.sneak",
-          "$texture": "textures/ui/sneak",
-          "$held_texture": "textures/ui/sneak_pressed",
-          "$held_binding": "#touch_sneak_pressed"
+          "button_mappings": [
+            {
+              "from_button_id": "button.menu_select",
+              "to_button_id": "cinnabar.touch.sneak",
+              "mapping_type": "pressed",
+              "scope": "view"
+            }
+          ],
+          "controls": [
+            {
+              "modern": {
+                "type": "panel",
+                "size": [
+                  "100%",
+                  "100%"
+                ],
+                "bindings": [
+                  {
+                    "binding_name": "#touch_scheme_joystick",
+                    "binding_name_override": "#visible"
+                  }
+                ],
+                "controls": [
+                  {
+                    "normal": {
+                      "type": "image",
+                      "texture": "textures/ui/sneak",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ]
+                    }
+                  },
+                  {
+                    "held": {
+                      "type": "image",
+                      "texture": "textures/ui/sneak_pressed",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 1,
+                      "bindings": [
+                        {
+                          "binding_name": "#touch_sneak_pressed",
+                          "binding_name_override": "#visible"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "classic": {
+                "type": "panel",
+                "size": [
+                  "100%",
+                  "100%"
+                ],
+                "bindings": [
+                  {
+                    "binding_name": "#touch_scheme_dpad",
+                    "binding_name_override": "#visible"
+                  }
+                ],
+                "controls": [
+                  {
+                    "normal": {
+                      "type": "image",
+                      "texture": "textures/gui/controls/sneak_dpad",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ]
+                    }
+                  },
+                  {
+                    "held": {
+                      "type": "image",
+                      "texture": "textures/gui/controls/sneak_dpad_pressed",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 1,
+                      "bindings": [
+                        {
+                          "binding_name": "#touch_sneak_pressed",
+                          "binding_name_override": "#visible"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
         }
       },
       {
