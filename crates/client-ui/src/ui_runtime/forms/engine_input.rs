@@ -147,7 +147,7 @@ pub fn drive(runtime: &mut UiRuntime, frame: &EngineFrame, mut input: EngineInpu
         if down {
             if let Some(point) = point {
                 let region = hit_test(&frame.hits, point);
-                engine_scroll::press(runtime, frame, region, point);
+                engine_scroll::press(runtime, frame, region, point, input.touch);
                 events.extend(
                     pointer_button(runtime, frame, true, Some(point), input.now, input.touch)
                         .events,

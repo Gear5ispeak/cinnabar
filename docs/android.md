@@ -197,7 +197,7 @@ sign-in, whose code you enter on another device.
 These stay keyboard, mouse or controller only: dropping the held item from the hotbar, pick
 block, the emote wheel, the player list, perspective, and mod or server Experience key
 bindings. Also missing are Back during gameplay, clipboard, opening links, Microsoft
-sign-in while the app is in the background, touch scrolling in forms and menus outside Settings,
+sign-in while the app is in the background, touch scrolling in menus outside Settings and server forms,
 and touch control remapping. The touch schemes' hold delay and the classic
 schemes' reported interaction model are provisional and not yet compared with the native client. Device performance, audio
 and suspend/resume are untested. See

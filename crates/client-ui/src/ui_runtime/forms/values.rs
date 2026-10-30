@@ -29,6 +29,15 @@ pub enum FormDrag {
     Control { key: String, last: [f64; 2] },
 }
 
+/// A finger panning a mouse-mode scroll view directly: the view, the finger's last position
+/// and how far it has travelled along the view's axis.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DirectPan {
+    pub view: String,
+    pub last: [f64; 2],
+    pub distance: f64,
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct FormEngineState {
     pub view: ViewState,
@@ -42,6 +51,8 @@ pub struct FormEngineState {
     pub drag: Option<FormDrag>,
     /// A touch pan on this scroll view key, with the pointer's last position.
     pub scroll_touch: Option<(String, [f64; 2])>,
+    /// A touch pan on a scroll view the layout gives no touch gesture.
+    pub direct_pan: Option<DirectPan>,
     /// When scroll dynamics last stepped.
     pub scroll_clock: Option<web_time::Instant>,
     /// The template's input components (mappings, hover, slider tracks).
@@ -67,6 +78,7 @@ impl FormEngineState {
         self.view.pointer = None;
         self.drag = None;
         self.scroll_touch = None;
+        self.direct_pan = None;
         // The dispatcher also retains slider tracks, gestures and button edges.
         // Reset them without dispatching a release that could submit the form.
         self.dispatcher = json_ui::Dispatcher::default();

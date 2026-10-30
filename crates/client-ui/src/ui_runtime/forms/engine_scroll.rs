@@ -8,7 +8,11 @@ use web_time::Instant;
 use json_ui::{Draggable, HitKind, HitRegion, ScrollMetrics};
 use semantic_input::ScrollUnit;
 
-use super::values::FormDrag;
+use super::values::{DirectPan, FormDrag};
+
+/// Travel, in window-virtual pixels, past which a direct pan is no longer a tap; matches the
+/// gesture views' slop.
+const DIRECT_PAN_SLOP: f64 = 5.0;
 use crate::ui_runtime::UiRuntime;
 use ui_engine::frame::EngineFrame;
 
@@ -47,12 +51,15 @@ pub(super) fn wheel(
 }
 
 /// A press at `point` over `region`: `true` when a scrollbar took it, so it
-/// presses nothing else. A press in a gesture view also starts a touch pan.
+/// presses nothing else. A press in a gesture view also starts a touch pan; a `touch` press in
+/// a scroll view laid out for the mouse pans it directly, since servers lay out their forms
+/// for the desktop context and a phone would otherwise have no way to scroll them.
 pub(super) fn press(
     runtime: &mut UiRuntime,
     frame: &EngineFrame,
     region: Option<&HitRegion>,
     point: [f64; 2],
+    touch: bool,
 ) -> bool {
     let engine = runtime.server_forms_mut().engine_mut();
     if let Some(region) = region.filter(|region| region.enabled)
@@ -99,6 +106,26 @@ pub(super) fn press(
     {
         engine.view.begin_scroll_touch(&view.key, metrics);
         engine.scroll_touch = Some((view.key.clone(), point));
+    } else if touch
+        && let Some(view) = frame
+            .hits
+            .iter()
+            .filter(|view| {
+                view.kind == HitKind::ScrollView
+                    && view.contains(point)
+                    && frame
+                        .report
+                        .scrolls
+                        .get(&view.key)
+                        .is_some_and(|metrics| metrics.max_offset() > 0.0)
+            })
+            .max_by_key(|view| view.key.len())
+    {
+        engine.direct_pan = Some(DirectPan {
+            view: view.key.clone(),
+            last: point,
+            distance: 0.0,
+        });
     }
     false
 }
@@ -132,6 +159,26 @@ pub(super) fn drag(runtime: &mut UiRuntime, frame: &EngineFrame, point: [f64; 2]
         }
         None => {}
     }
+    if let Some(pan) = engine.direct_pan.as_mut()
+        && let Some(metrics) = frame.report.scrolls.get(&pan.view)
+    {
+        let moved = along(metrics, point) - along(metrics, pan.last);
+        pan.distance += moved.abs();
+        pan.last = point;
+        // Content follows the finger once the pan passes the tap slop.
+        if pan.distance > DIRECT_PAN_SLOP {
+            let offset = engine
+                .view
+                .scroll
+                .get(&pan.view)
+                .copied()
+                .unwrap_or(metrics.offset);
+            engine.view.scroll.insert(
+                pan.view.clone(),
+                (offset - moved).clamp(0.0, metrics.max_offset()),
+            );
+        }
+    }
     if let Some((view, last)) = engine.scroll_touch.clone()
         && let Some(metrics) = frame.report.scrolls.get(&view)
     {
@@ -145,6 +192,9 @@ pub(super) fn drag(runtime: &mut UiRuntime, frame: &EngineFrame, point: [f64; 2]
 /// press under it no longer counts.
 pub(super) fn release(runtime: &mut UiRuntime) -> bool {
     let engine = runtime.server_forms_mut().engine_mut();
+    if let Some(pan) = engine.direct_pan.take() {
+        return pan.distance <= DIRECT_PAN_SLOP;
+    }
     match engine.scroll_touch.take() {
         Some((view, _)) => engine.view.end_scroll_touch(&view),
         None => true,
