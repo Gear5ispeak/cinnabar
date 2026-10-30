@@ -133,6 +133,18 @@ pub enum PlayerInputMode {
     GamePad,
 }
 
+/// How touch actions aim, reported to Bedrock beside the input mode.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum PlayerInteractionModel {
+    /// Actions aim where the finger taps.
+    Touch,
+    /// Actions aim at the crosshair, as with a mouse or controller.
+    #[default]
+    Crosshair,
+    /// The classic D-pad touch controls.
+    Classic,
+}
+
 impl PlayerInputMode {
     /// Touch and gamepad use vanilla's persistent controls: sneak survives
     /// suspended input and every input carries PersistSneak.
@@ -159,6 +171,7 @@ pub struct PlayerAuthInputSnapshot {
     pub interact_rotation: [f32; 2],
     pub flags: PlayerInputFlags,
     pub input_mode: PlayerInputMode,
+    pub interaction_model: PlayerInteractionModel,
     /// The vehicle the client predicts. The wire then carries its position and delta in
     /// place of the player's, which this snapshot keeps for local consumers.
     pub vehicle: Option<PredictedVehicleInput>,
@@ -290,7 +303,11 @@ pub fn player_auth_input_with_mining_request(
         // protocol-1001 code sent Unknown(-1) because the generated definition
         // was zigzag while the authority was an unsigned varint; that
         // workaround is obsolete and the named variant is now correct.
-        new_interaction_model: NewInteractionModel::Crosshair,
+        new_interaction_model: match snapshot.interaction_model {
+            PlayerInteractionModel::Touch => NewInteractionModel::Touch,
+            PlayerInteractionModel::Crosshair => NewInteractionModel::Crosshair,
+            PlayerInteractionModel::Classic => NewInteractionModel::Classic,
+        },
         interact_rotation: snapshot.interact_rotation.into(),
         client_tick: PlayerInputTick(tick),
         pos_delta: snapshot

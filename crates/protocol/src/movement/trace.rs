@@ -109,6 +109,7 @@ mod tests {
             interact_rotation: [-12.5, 179.5],
             flags: PlayerInputFlags::UP | PlayerInputFlags::SPRINTING,
             input_mode: PlayerInputMode::GamePad,
+            interaction_model: crate::PlayerInteractionModel::Crosshair,
             vehicle: None,
         }
     }

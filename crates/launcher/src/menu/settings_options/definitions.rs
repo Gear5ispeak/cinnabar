@@ -293,6 +293,54 @@ const GRAPHICS: &[SettingChoice] = &[
     },
 ];
 
+/// The label of one touch scheme, in Bedrock's "movement and aim" wording.
+const fn touch_scheme_choice(scheme: semantic_input::TouchScheme) -> SettingChoice {
+    use semantic_input::{TouchAim, TouchMovement};
+    let (name, label) = match (scheme.movement, scheme.aim) {
+        (TouchMovement::Dpad, TouchAim::Tap) => {
+            ("touch_scheme_classic_touch", "Classic: D-pad and tap")
+        }
+        (TouchMovement::Dpad, TouchAim::Crosshair) => {
+            ("touch_scheme_classic_split", "Classic: D-pad and crosshair")
+        }
+        (TouchMovement::Joystick, TouchAim::Tap) => {
+            ("touch_scheme_modern_touch", "Modern: joystick and tap")
+        }
+        (TouchMovement::Joystick, TouchAim::Crosshair) => {
+            ("touch_scheme_modern_split", "Modern: joystick and crosshair")
+        }
+    };
+    SettingChoice { name, label }
+}
+
+/// Touch scheme choices in [`semantic_input::TouchScheme::ALL`] order, whose index each saved
+/// value is.
+const TOUCH_SCHEMES: &[SettingChoice] = &{
+    let schemes = semantic_input::TouchScheme::ALL;
+    let mut choices = [touch_scheme_choice(schemes[0]); semantic_input::TouchScheme::ALL.len()];
+    let mut index = 1;
+    while index < choices.len() {
+        choices[index] = touch_scheme_choice(schemes[index]);
+        index += 1;
+    }
+    choices
+};
+
+/// Modern split, the controls touch players had before schemes existed.
+const TOUCH_SCHEME_DEFAULT: i32 = {
+    let mut index = 0;
+    while !matches!(
+        semantic_input::TouchScheme::ALL[index],
+        semantic_input::TouchScheme {
+            movement: semantic_input::TouchMovement::Joystick,
+            aim: semantic_input::TouchAim::Crosshair,
+        }
+    ) {
+        index += 1;
+    }
+    index as i32
+};
+
 macro_rules! notification_choices {
     ($($suffix:ident => $millis:expr;)+) => {
         const TOAST_DURATIONS: &[SettingChoice] = &[$(
@@ -555,5 +603,7 @@ settings! {
         [(SettingPanel::GeneralAdvanced, 1)], [], None, None;
     TouchSensitivity => "touch_sensitivity", slider("Touch sensitivity", 0, 100, 50),
         [(SettingPanel::Touch, 0)], [], None, None;
+    TouchControlScheme => "touch_control_scheme", dropdown("Control scheme", TOUCH_SCHEMES, TOUCH_SCHEME_DEFAULT),
+        [(SettingPanel::Touch, 1)], [], None, None;
 
 }

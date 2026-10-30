@@ -179,6 +179,8 @@ pub struct MovementTicker {
     emote_ticks: u32,
     /// Recent tick-end states, the single source of build actions' pre-tick state.
     tick_ends: outbox::TickEnds,
+    /// The touch scheme's aim, reported while touch is the input mode.
+    touch_interaction: protocol::PlayerInteractionModel,
 }
 
 #[cfg(test)]
@@ -231,6 +233,7 @@ impl MovementTicker {
             next_tick_rotation: None,
             emote_ticks: 0,
             tick_ends: outbox::TickEnds::default(),
+            touch_interaction: protocol::PlayerInteractionModel::default(),
         }
     }
 
@@ -481,6 +484,7 @@ impl MovementTicker {
                 | self.take_next_tick_flags()
                 | self.advance_emote_input(),
             input_mode: sample.input_mode,
+            interaction_model: self.interaction_model(sample.input_mode),
             vehicle: sample.processed.vehicle.map(|vehicle| vehicle.input()),
         };
         self.next_tick = self.next_tick.saturating_add(1);

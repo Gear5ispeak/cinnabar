@@ -6,7 +6,9 @@ use bevy::{
     prelude::{Local, Query, Res, ResMut, With},
     window::{PrimaryWindow, Window},
 };
-use semantic_input::{TouchContact, TouchControlRegion, TouchControlState, touch};
+use semantic_input::{
+    TouchContact, TouchControlRegion, TouchControlState, TouchMovement, dpad_vector, touch,
+};
 
 use crate::semantic_controls::SemanticTouchTargets;
 use client_shell::{
@@ -139,6 +141,7 @@ pub(crate) fn drive_gameplay_touch_targets(
     mut state: Local<TouchControlState>,
     mut mod_button_epoch: Local<u64>,
     world: Option<Res<crate::runtime::world::ClientWorld>>,
+    mut gestures: super::touch_gestures::LookGestures,
 ) {
     targets.release_all();
     // Every event is consumed each frame, so none replays once gameplay regains input.
@@ -148,6 +151,7 @@ pub(crate) fn drive_gameplay_touch_targets(
         .unwrap_or_default();
     let Some(mut presentation) = presentation.filter(|view| view.touch_controls_enabled()) else {
         state.clear();
+        gestures.reset();
         return;
     };
     let gameplay = match (player.as_deref(), windows.single()) {
@@ -159,6 +163,7 @@ pub(crate) fn drive_gameplay_touch_targets(
     };
     let (Some(window), Some(mut player)) = (gameplay, player) else {
         state.clear();
+        gestures.reset();
         presentation.set_touch_contacts(Vec::new());
         presentation.close_touch_utilities();
         return;
@@ -240,6 +245,7 @@ pub(crate) fn drive_gameplay_touch_targets(
                 touches.clear_just_pressed(id);
             }
             state.clear();
+            gestures.reset();
             presentation.set_touch_contacts(Vec::new());
             return;
         }
@@ -256,8 +262,15 @@ pub(crate) fn drive_gameplay_touch_targets(
     }
     let held = state.sample();
     presentation.set_touch_contacts(held.clone());
+    let scheme = presentation.touch_scheme();
+    gestures.route(scheme, &held, &lifted, &mut targets);
     let look_scaled = |sample: TouchContact| {
-        if sample.hit_id == Some(touch::LOOK_SURFACE) {
+        if sample.hit_id == Some(touch::JOYSTICK) && scheme.movement == TouchMovement::Dpad {
+            TouchContact {
+                delta: dpad_vector(sample.delta),
+                ..sample
+            }
+        } else if sample.hit_id == Some(touch::LOOK_SURFACE) {
             TouchContact {
                 delta: [
                     sample.delta[0] * LOOK_GAIN[0],

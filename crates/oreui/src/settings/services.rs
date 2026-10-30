@@ -372,11 +372,15 @@ fn touch(content: &mut Content<'_, '_>) -> Result<(), PaintError> {
         )?;
         content.label(
             "Touch controls",
-            "Move with the left stick. Drag outside the buttons to look around.",
+            "Classic moves with a D-pad and Modern with a stick. Drag outside the buttons to look.",
         )?;
         content.label(
             "",
-            "Use the on-screen buttons to jump, sneak, sprint, attack and use items.",
+            "Tap schemes act where you touch; crosshair schemes act at the crosshair.",
+        )?;
+        content.label(
+            "",
+            "Tap to use or attack and hold to break. Modern crosshair uses its own buttons instead.",
         )?;
     } else {
         content.label("", "hudScreen.controlCustomization.tooltip.notouch")?;

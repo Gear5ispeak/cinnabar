@@ -74,8 +74,9 @@ They behave as on other platforms but run their callbacks more slowly.
 
 ## Controls
 
-The same on-screen touch controls as on Android: the stick moves, dragging elsewhere turns,
-and the buttons jump, sneak, sprint, attack, use, pause and open the inventory. Menu text fields
+The same on-screen touch controls and four control schemes as on Android (Settings > Touch >
+Control scheme): Classic D-pad or Modern stick, each aiming where you tap or at the crosshair.
+Re-run `make assets` and `add-assets.py` for a new IPA so the D-pad's arrows are included. Menu text fields
 and chat ask iOS for its on-screen keyboard; nothing yet moves a field the keyboard covers. A Bluetooth
 keyboard and mouse work only as far as winit's UIKit backend delivers their input.
 

@@ -30,6 +30,7 @@ fn movement() -> PlayerAuthInputSnapshot {
         interact_rotation: [0.0, 180.0],
         flags: PlayerInputFlags::NONE,
         input_mode: PlayerInputMode::Mouse,
+        interaction_model: crate::PlayerInteractionModel::Crosshair,
         vehicle: None,
     }
 }
@@ -251,6 +252,7 @@ fn filled_use_matches_independent_pinned_movement_fixture() {
             | PlayerInputFlags::JUMPING
             | PlayerInputFlags::SPRINTING,
         input_mode: PlayerInputMode::Mouse,
+        interaction_model: crate::PlayerInteractionModel::Crosshair,
         vehicle: None,
     };
     let mut rebuilt =

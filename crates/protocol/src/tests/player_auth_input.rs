@@ -23,6 +23,7 @@ fn snapshot() -> PlayerAuthInputSnapshot {
             | PlayerInputFlags::JUMPING
             | PlayerInputFlags::SPRINTING,
         input_mode: PlayerInputMode::Mouse,
+        interaction_model: crate::PlayerInteractionModel::Crosshair,
         vehicle: None,
     }
 }
@@ -358,5 +359,28 @@ fn accumulated_block_actions_survive_one_input_packet() {
             expected.position
         );
         assert_eq!(actual.facing.0, i32::from(expected.face));
+    }
+}
+
+#[test]
+fn touch_schemes_report_their_interaction_model() {
+    for (model, wire) in [
+        (crate::PlayerInteractionModel::Touch, NewInteractionModel::Touch),
+        (
+            crate::PlayerInteractionModel::Crosshair,
+            NewInteractionModel::Crosshair,
+        ),
+        (crate::PlayerInteractionModel::Classic, NewInteractionModel::Classic),
+    ] {
+        let packet = player_auth_input(PlayerAuthInputSnapshot {
+            input_mode: PlayerInputMode::Touch,
+            interaction_model: model,
+            ..snapshot()
+        })
+        .expect("valid player input");
+        let packets::Packet::PlayerAuthInput(input) = *packet.data else {
+            panic!("expected PlayerAuthInput payload");
+        };
+        assert_eq!(input.new_interaction_model, wire);
     }
 }

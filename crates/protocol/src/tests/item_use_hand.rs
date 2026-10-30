@@ -155,6 +155,7 @@ fn movement() -> PlayerAuthInputSnapshot {
         interact_rotation: [0.0, 0.0],
         flags: PlayerInputFlags::NONE,
         input_mode: PlayerInputMode::Mouse,
+        interaction_model: crate::PlayerInteractionModel::Crosshair,
         vehicle: None,
     }
 }

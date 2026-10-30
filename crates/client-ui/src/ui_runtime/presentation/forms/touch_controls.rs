@@ -3,7 +3,9 @@
 use std::sync::Arc;
 
 use json_ui::{Catalog, Context, DataSource, HitRegion, Scalar, ViewState, hit_test};
-use semantic_input::{TouchBounds, TouchContact, TouchControlRegion, touch};
+use semantic_input::{
+    TouchBounds, TouchContact, TouchControlRegion, TouchMovement, TouchScheme, dpad_vector, touch,
+};
 use ui::{FONT_DESIGN_PIXEL_TEXELS, UiNode, UiPoint};
 use ui_engine::{
     cached_screen::CachedScreen,
@@ -51,6 +53,8 @@ pub(in super::super) struct TouchControls {
     /// Geometry last installed in the editor, independent of ordinary HUD paints.
     editor_viewport: Option<([f32; 2], f32, ui::SafeArea)>,
     pub(super) saved: launcher::menu::settings_options::touch_layout::TouchLayout,
+    /// The saved control scheme, which picks the stick or D-pad and the visible action buttons.
+    pub(super) scheme: TouchScheme,
     base: Option<EngineFrame>,
     base_viewport: Option<([f32; 2], f32, ui::SafeArea)>,
     catalog: Option<Arc<Catalog>>,
@@ -102,6 +106,16 @@ impl UiPresentationRuntime {
 
     pub fn touch_controls_enabled(&self) -> bool {
         self.screens.touch.enabled
+    }
+
+    /// The control scheme gameplay touch input follows.
+    pub fn touch_scheme(&self) -> TouchScheme {
+        self.screens.touch.scheme
+    }
+
+    /// Whether touch play hides the crosshair because actions aim at the finger.
+    pub fn touch_hides_crosshair(&self) -> bool {
+        self.screens.touch.enabled && !self.screens.touch.scheme.shows_crosshair()
     }
 
     pub fn set_touch_contacts(&mut self, contacts: Vec<TouchContact>) {
@@ -215,6 +229,7 @@ impl UiPresentationRuntime {
             Scalar::Bool(runtime.player_list_held()),
         );
         data.set_global("#touch_never_active", Scalar::Bool(false));
+        set_scheme_globals(&mut data, state.scheme, &state.contacts);
         for &(name, id) in CONTROLS {
             let held = state
                 .contacts
@@ -255,6 +270,8 @@ impl UiPresentationRuntime {
             let base_view = ViewState::default();
             let mut base_data = DataSource::new();
             base_data.set_global("#touch_utilities_open", Scalar::Bool(true));
+            // Every placeable control is painted once, whatever the scheme hides.
+            set_scheme_globals(&mut base_data, TouchScheme::default(), &[]);
             state.base = renderer.draw(ScreenArt::default(), &mut paint, |env, root| {
                 screen.render_with(
                     SCREEN,
@@ -308,6 +325,59 @@ impl UiPresentationRuntime {
             Some((knob.key.clone(), [knob.rect.w, knob.rect.h]))
         });
         Ok(())
+    }
+}
+
+/// D-pad arrow names and the direction each lights for, with positive Y forward.
+const DPAD_ARROWS: &[(&str, [i8; 2])] = &[
+    ("up", [0, 1]),
+    ("down", [0, -1]),
+    ("left", [-1, 0]),
+    ("right", [1, 0]),
+    ("up_left", [-1, 1]),
+    ("up_right", [1, 1]),
+    ("down_left", [-1, -1]),
+    ("down_right", [1, -1]),
+];
+
+/// Publishes which movement control and action buttons `scheme` shows, and which D-pad arrow
+/// the stick finger in `contacts` holds.
+fn set_scheme_globals(data: &mut DataSource, scheme: TouchScheme, contacts: &[TouchContact]) {
+    let dpad = scheme.movement == TouchMovement::Dpad;
+    data.set_global("#touch_scheme_dpad", Scalar::Bool(dpad));
+    data.set_global("#touch_scheme_joystick", Scalar::Bool(!dpad));
+    data.set_global(
+        "#touch_action_buttons",
+        Scalar::Bool(scheme.shows_action_buttons()),
+    );
+    let held = contacts
+        .iter()
+        .find(|contact| contact.hit_id == Some(touch::JOYSTICK))
+        .map(|contact| dpad_vector(contact.delta))
+        .map(|[x, y]| [sign(x), sign(y)]);
+    data.set_global(
+        "#touch_dpad_forward",
+        Scalar::Bool(held.is_some_and(|[_, y]| y > 0)),
+    );
+    data.set_global(
+        "#touch_dpad_back",
+        Scalar::Bool(held.is_some_and(|[_, y]| y < 0)),
+    );
+    for &(name, direction) in DPAD_ARROWS {
+        data.set_global(
+            format!("#touch_dpad_{name}_pressed"),
+            Scalar::Bool(held == Some(direction)),
+        );
+    }
+}
+
+fn sign(value: f32) -> i8 {
+    if value > 0.0 {
+        1
+    } else if value < 0.0 {
+        -1
+    } else {
+        0
     }
 }
 

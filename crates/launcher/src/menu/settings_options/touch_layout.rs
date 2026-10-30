@@ -91,6 +91,12 @@ impl SettingsOptions {
     pub fn touch_layout(&self) -> &TouchLayout {
         &self.touch_layout
     }
+    /// The chosen touch control scheme.
+    pub fn touch_scheme(&self) -> semantic_input::TouchScheme {
+        semantic_input::TouchScheme::from_index(
+            usize::try_from(self.value(super::SettingId::TouchControlScheme)).unwrap_or_default(),
+        )
+    }
     /// Replaces a completed layout draft; callers persist only after Save.
     pub fn set_touch_layout(&mut self, mut layout: TouchLayout) {
         layout.validate();
@@ -100,6 +106,19 @@ impl SettingsOptions {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn the_touch_scheme_defaults_to_modern_split_and_persists() {
+        let mut options = SettingsOptions::default();
+        assert_eq!(options.touch_scheme(), semantic_input::TouchScheme::default());
+        let classic_tap = semantic_input::TouchScheme::ALL[0];
+        assert!(options.set(
+            super::super::SettingId::TouchControlScheme.index(),
+            classic_tap.index() as i32
+        ));
+        let decoded = SettingsOptions::decode(&serde_json::to_vec(&options).unwrap()).unwrap();
+        assert_eq!(decoded.touch_scheme(), classic_tap);
+    }
+
     #[test]
     fn emote_button_placement_migrates_to_the_utility_trigger() {
         let options =

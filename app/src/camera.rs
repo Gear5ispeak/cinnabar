@@ -20,6 +20,7 @@ mod facts;
 mod focus;
 mod presentation;
 mod render_scale;
+pub(crate) mod touch_aim;
 
 /// Spawns and drives one [`Camera3d`] fly camera.
 pub struct FlyCameraPlugin {
@@ -67,6 +68,7 @@ impl Plugin for FlyCameraPlugin {
         .init_resource::<PendingDeviceFrame>()
         .init_resource::<SemanticRouteState>()
         .init_resource::<SemanticTouchTargets>()
+        .init_resource::<touch_aim::TouchAimPoint>()
         .init_resource::<RuntimeSettings>()
         .init_resource::<client_presentation::camera::LocalPlayerDeath>()
         .add_systems(

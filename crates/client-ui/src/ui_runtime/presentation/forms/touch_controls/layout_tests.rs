@@ -167,6 +167,34 @@ fn crosshair_factory_layout_uses_proportional_centers_and_height_based_sizes() {
     }
 }
 
+/// Only modern split keeps the attack and use buttons; every scheme keeps a movement control in
+/// the stick's place, and only the crosshair schemes draw the crosshair.
+#[test]
+fn schemes_choose_their_action_buttons_and_crosshair() {
+    let Some(mut p) = pack_harness::engine_presentation() else {
+        return;
+    };
+    let runtime = pack_harness::menu_runtime();
+    let player = player_state::PlayerState::new(1);
+    p.enable_touch_controls(true);
+    for scheme in TouchScheme::ALL {
+        p.screens.touch.scheme = scheme;
+        paint(&mut p, &player, &runtime, [1280, 700]);
+        let frame = p.screens.touch.frame.as_ref().unwrap();
+        let painted = |id| {
+            frame
+                .hits
+                .iter()
+                .any(|hit| control_id(hit.pressed.as_deref()) == Some(id))
+        };
+        assert!(painted(touch::JOYSTICK), "{scheme:?}");
+        for id in [touch::ATTACK, touch::USE] {
+            assert_eq!(painted(id), scheme.shows_action_buttons(), "{scheme:?}");
+        }
+        assert_eq!(p.touch_hides_crosshair(), !scheme.shows_crosshair());
+    }
+}
+
 /// Paints the overlay with deterministic in-memory fixtures, so menu interaction needs no install.
 fn paint_touch(p: &mut UiPresentationRuntime, runtime: &UiRuntime, size: [u32; 2]) {
     let metrics = TextMetrics::for_viewport(size, ui::DpiScale::new(1.).unwrap(), None);

@@ -112,7 +112,8 @@ impl UiPresentationRuntime {
             // replacements. Personal modal surfaces own input outside the scene stack.
             let crosshair_visible = stack.receives_input(Scene::Gameplay)
                 && !self.screens.mod_ui.mod_panel_open()
-                && !self.screens.mod_ui.experience_modal_open();
+                && !self.screens.mod_ui.experience_modal_open()
+                && !self.touch_hides_crosshair();
             if host.over_world {
                 self.append_item_activation(
                     runtime,

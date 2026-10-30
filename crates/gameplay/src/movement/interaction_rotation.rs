@@ -25,6 +25,24 @@ pub(super) fn from_facing(pitch: f32, yaw: f32) -> [f32; 2] {
 }
 
 impl MovementTicker {
+    /// Selects the interaction model later touch ticks report; other input modes aim with the
+    /// crosshair.
+    pub fn set_touch_interaction_model(&mut self, model: protocol::PlayerInteractionModel) {
+        self.touch_interaction = model;
+    }
+
+    /// The model reported for a tick sampled in `input_mode`.
+    pub(super) fn interaction_model(
+        &self,
+        input_mode: protocol::PlayerInputMode,
+    ) -> protocol::PlayerInteractionModel {
+        if input_mode == protocol::PlayerInputMode::Touch {
+            self.touch_interaction
+        } else {
+            protocol::PlayerInteractionModel::Crosshair
+        }
+    }
+
     /// Publishes assisted aim for one unsent tick; a policy without a target uses actor facing.
     pub fn publish_interaction_aim(&mut self, tick: u64, direction: Option<[f32; 3]>) -> bool {
         let rotation = match direction.map(from_direction) {
@@ -48,6 +66,25 @@ impl MovementTicker {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_touch_ticks_report_the_touch_interaction_model() {
+        let mut ticker = MovementTicker::default();
+        ticker.set_touch_interaction_model(protocol::PlayerInteractionModel::Touch);
+        assert_eq!(
+            ticker.interaction_model(protocol::PlayerInputMode::Touch),
+            protocol::PlayerInteractionModel::Touch
+        );
+        for mode in [
+            protocol::PlayerInputMode::Mouse,
+            protocol::PlayerInputMode::GamePad,
+        ] {
+            assert_eq!(
+                ticker.interaction_model(mode),
+                protocol::PlayerInteractionModel::Crosshair
+            );
+        }
+    }
 
     #[test]
     fn picked_directions_keep_their_independent_pitch_and_unwrapped_yaw() {
