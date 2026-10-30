@@ -57,9 +57,20 @@ the App ID, later installs keep it; `isideload`'s `install_app` turns it on when
 
 The app's `Documents` folder appears in the Files app under **On My iPhone > Cinnabar**. Logs are
 in `data/logs`, settings and `servers.json` in `config`. Include the newest log when reporting a
-problem. The build includes the experimental Java shader-pack renderer: drop a pack's zip into
-`data/shaderpacks` and pick it in the Shaders tab. Packs render at the screen's native 3×
+problem. The build includes the experimental Java shader-pack renderer: import a pack's zip
+from the Shaders tab, or drop it into `data/shaderpacks`, and pick it there. Packs render at the screen's native 3×
 resolution, so a heavy pack is GPU-bound on a phone; its lower quality profiles cost less.
+
+## Importing files and links
+
+Import buttons for resource packs, shader packs, mods, skins and capes open the iOS document
+picker, which can choose files from On My iPhone, iCloud Drive or another Files provider; the
+app imports a private copy. Folder buttons open that folder of Cinnabar's `Documents` in the
+Files app. Links, including the Microsoft sign-in page, open in Safari, and chat copy and paste
+use the system pasteboard.
+
+Mods run on wasmtime's Pulley interpreter, since iOS lets an app map no new executable code.
+They behave as on other platforms but run their callbacks more slowly.
 
 ## Controls
 
@@ -70,7 +81,8 @@ keyboard and mouse work only as far as winit's UIKit backend delivers their inpu
 
 ## Not supported
 
-- Local worlds, mods and anything that needs JIT or a second process.
+- Local worlds and anything else that needs JIT or a second process.
 - Preparing assets on the device: inject them with `add-assets.py` before sideloading.
 - The crash monitor and native crash dumps; Rust panics still write crash folders.
-- Clipboard and opening links. Sign in with the device code on another device.
+- Microsoft sign-in while the app is in the background: return to Cinnabar after entering the
+  code in Safari.

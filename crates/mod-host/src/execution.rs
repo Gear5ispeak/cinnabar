@@ -55,6 +55,7 @@ pub(crate) fn engine_with_policy(policy: EnginePolicy) -> Result<(Engine, EpochT
         .wasm_multi_memory(false)
         .wasm_relaxed_simd(false)
         .max_wasm_stack(256 * 1024);
+    platform_backend(&mut config)?;
     ticking_engine(&config)
 }
 
@@ -70,7 +71,26 @@ pub(crate) fn trusted_engine() -> Result<(Engine, EpochTicker)> {
         .wasm_memory64(false)
         .wasm_relaxed_simd(false)
         .max_wasm_stack(1024 * 1024);
+    platform_backend(&mut config)?;
     ticking_engine(&config)
+}
+
+/// iOS maps no writable memory executable, so Cranelift's native code cannot run there; mods
+/// compile to the Pulley interpreter instead. Its explicit bounds checks need no large virtual
+/// reservation or guard region, which an iOS process's limited address space could not hold
+/// for every loaded mod.
+fn platform_backend(config: &mut Config) -> Result<()> {
+    #[cfg(target_os = "ios")]
+    config
+        .target("pulley64")
+        .context("select the Pulley interpreter")?
+        .signals_based_traps(false)
+        .memory_reservation(0)
+        .memory_guard_size(0)
+        .memory_reservation_for_growth(1 << 20);
+    #[cfg(not(target_os = "ios"))]
+    let _ = config;
+    Ok(())
 }
 
 /// Creates an engine and the ticker thread that advances its epoch for deadline checks.

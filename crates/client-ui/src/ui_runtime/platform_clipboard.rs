@@ -5,10 +5,14 @@ use std::sync::{Arc, Mutex, PoisonError, TryLockError};
 #[cfg(not(any(target_os = "android", target_os = "ios", target_arch = "wasm32")))]
 use arboard::{Clipboard as SystemClipboard, Error as SystemClipboardError};
 use ui::ChatClipboard;
-#[cfg(any(target_os = "android", target_os = "ios", target_arch = "wasm32"))]
+#[cfg(target_os = "ios")]
+use ios::{Clipboard as SystemClipboard, Error as SystemClipboardError};
+#[cfg(any(target_os = "android", target_arch = "wasm32"))]
 use unavailable::{Clipboard as SystemClipboard, Error as SystemClipboardError};
 
-#[cfg(any(target_os = "android", target_os = "ios", target_arch = "wasm32"))]
+#[cfg(target_os = "ios")]
+mod ios;
+#[cfg(any(target_os = "android", target_arch = "wasm32"))]
 mod unavailable;
 
 /// Handle to the process-wide platform clipboard.

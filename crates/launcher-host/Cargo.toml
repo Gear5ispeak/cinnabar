@@ -58,6 +58,13 @@ rustix = { version = "1", default-features = false, features = ["fs", "process",
 jni = "0.21"
 ndk-context = "0.1"
 
+# UIKit's browser, Files-app, pasteboard and document-picker handoff.
+[target.'cfg(target_os = "ios")'.dependencies]
+block2 = "0.6"
+dispatch2 = "0.3"
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSDictionary", "NSString", "NSURL"] }
+
 [target.'cfg(target_os = "linux")'.dependencies]
 async-io = "2"
 futures-lite = "2"

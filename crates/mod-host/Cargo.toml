@@ -56,6 +56,10 @@ wasmparser = { version = "=0.247.0" }
 wasm-encoder = "=0.247.0"
 wit-parser.workspace = true
 
+# iOS forbids executable memory, so mods run on wasmtime's portable interpreter there.
+[target.'cfg(target_os = "ios")'.dependencies]
+wasmtime = { workspace = true, features = ["call-hook", "pulley"] }
+
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Storage_FileSystem"] }
 

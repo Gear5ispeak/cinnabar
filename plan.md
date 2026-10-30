@@ -1319,8 +1319,10 @@ launches. Native Windows startup, update and crash-restart acceptance remains in
   soft-keyboard entry and keyboard overlap remain unverified. Chat requests the iOS software
   keyboard. Shader packs compile on a background thread on iOS, with cooperative heap and
   time checks; compiler faults can terminate the app. Device acceptance of this path remains open.
-  On-device first-run preparation,
-  native crash capture, clipboard, link opening, local worlds and mods (no JIT) remain
+  Import buttons use UIKit's document picker, folder buttons open the Files app, links open
+  through UIApplication and chat uses the general pasteboard; mods compile to the Pulley
+  interpreter. None of these has device evidence yet, and Pulley mod callback cost is
+  unmeasured. On-device first-run preparation, native crash capture and local worlds remain
   unavailable.
 - Local mods and server experiences still need runtime/input isolation, reload/reorder/
   removal, consent, custom screen transitions and media qualification. Unmeasured shared

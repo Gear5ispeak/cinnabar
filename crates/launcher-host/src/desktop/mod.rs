@@ -4,6 +4,8 @@ use std::path::{Path, PathBuf};
 
 #[cfg(target_os = "android")]
 mod android;
+#[cfg(target_os = "ios")]
+pub mod ios;
 #[cfg(target_os = "linux")]
 pub mod dbus;
 pub mod picker;
@@ -39,9 +41,14 @@ pub fn open_url(url: &str) {
     }
 }
 
-/// Whether `open_folder` has a file manager to hand folders to on this OS.
+/// Whether `open_folder` has a file manager to hand folders to on this OS. iOS shows the app's
+/// own `Documents` folders in the Files app.
 pub fn opens_folders() -> bool {
-    is_desktop(std::env::consts::OS)
+    shows_folders(std::env::consts::OS)
+}
+
+fn shows_folders(os: &str) -> bool {
+    is_desktop(os) || os == "ios"
 }
 
 /// Whether the game window receives files dragged onto it on this OS.
@@ -50,7 +57,7 @@ pub fn accepts_file_drops() -> bool {
 }
 
 /// Desktop systems have a file manager and windows that take dropped files. Android and other
-/// targets have neither, so they get no folder buttons and import only through the picker.
+/// targets have neither, so they import only through the picker; iOS still shows folders.
 fn is_desktop(os: &str) -> bool {
     matches!(os, "linux" | "macos" | "windows")
 }
@@ -91,7 +98,9 @@ fn show_folder(dir: &Path) -> bool {
         || run_tool(dir);
     #[cfg(target_os = "macos")]
     return run_tool(dir);
-    #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
+    #[cfg(target_os = "ios")]
+    return ios::show_folder(dir);
+    #[cfg(not(any(windows, target_os = "macos", target_os = "linux", target_os = "ios")))]
     {
         let _ = dir;
         false
@@ -127,8 +136,23 @@ fn open_outcome(url: &str) -> OpenOutcome {
         tracing::warn!("the activity could not open a browser: {error}");
         false
     }));
-    #[cfg(all(unix, not(any(target_os = "linux", target_os = "android"))))]
+    #[cfg(target_os = "ios")]
+    return handoff_result(ios::open_url(url));
+    #[cfg(all(
+        unix,
+        not(any(target_os = "linux", target_os = "android", target_os = "ios"))
+    ))]
     return handoff_result(run_tool(url));
+}
+
+/// The Files app's link for a folder of an app that shares its `Documents`: the folder's
+/// percent-encoded `file:` URL under the `shareddocuments:` scheme.
+#[cfg(any(target_os = "ios", test))]
+fn files_app_url(dir: &Path) -> String {
+    match url::Url::from_directory_path(dir) {
+        Ok(url) => format!("shareddocuments{}", &url[url::Position::AfterScheme..]),
+        Err(()) => "shareddocuments://".to_owned(),
+    }
 }
 
 /// Only unavailable or failed portal requests may try another desktop handler.
@@ -159,10 +183,13 @@ fn handoff_result(opened: bool) -> OpenOutcome {
 /// The desktop's command-line opener for URLs and paths.
 #[cfg(target_os = "macos")]
 const OPENER: &str = "open";
-#[cfg(all(unix, not(any(target_os = "macos", target_os = "android"))))]
+#[cfg(all(
+    unix,
+    not(any(target_os = "macos", target_os = "android", target_os = "ios"))
+))]
 const OPENER: &str = "xdg-open";
 
-#[cfg(all(unix, not(target_os = "android")))]
+#[cfg(all(unix, not(any(target_os = "android", target_os = "ios"))))]
 fn run_tool(argument: impl AsRef<std::ffi::OsStr>) -> bool {
     opener(argument)
         .status()
@@ -170,7 +197,7 @@ fn run_tool(argument: impl AsRef<std::ffi::OsStr>) -> bool {
 }
 
 /// Passes `argument` as one argv entry, never through a shell.
-#[cfg(all(unix, not(target_os = "android")))]
+#[cfg(all(unix, not(any(target_os = "android", target_os = "ios"))))]
 fn opener(argument: impl AsRef<std::ffi::OsStr>) -> std::process::Command {
     use std::process::{Command, Stdio};
     let mut command = Command::new(OPENER);
@@ -194,9 +221,22 @@ mod tests {
         for os in ["android", "ios", "freebsd"] {
             assert!(!is_desktop(os), "{os}");
         }
+        assert!(shows_folders("ios"));
+        assert!(!shows_folders("android"));
     }
 
-    #[cfg(all(unix, not(target_os = "android")))]
+    #[cfg(unix)]
+    #[test]
+    fn ios_folders_open_as_percent_encoded_files_app_links() {
+        assert_eq!(
+            files_app_url(Path::new(
+                "/var/mobile/Containers/Data/Application/A B/Documents/data"
+            )),
+            "shareddocuments:///var/mobile/Containers/Data/Application/A%20B/Documents/data/"
+        );
+    }
+
+    #[cfg(all(unix, not(any(target_os = "android", target_os = "ios"))))]
     #[test]
     fn the_opener_gets_the_folder_as_one_unparsed_argument() {
         let dir = Path::new("/data/My Worlds; echo $HOME");
