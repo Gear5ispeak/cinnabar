@@ -56,6 +56,8 @@ pub(in super::super) struct TouchControls {
     pub(super) saved: launcher::menu::settings_options::touch_layout::TouchLayout,
     /// The saved control scheme, which picks the stick or D-pad and the visible action buttons.
     pub(super) scheme: TouchScheme,
+    /// Whether the classic D-pad sprints while moving forward.
+    pub(super) classic_auto_sprint: bool,
     base: Option<EngineFrame>,
     base_viewport: Option<([f32; 2], f32, ui::SafeArea)>,
     catalog: Option<Arc<Catalog>>,
@@ -112,6 +114,11 @@ impl UiPresentationRuntime {
     /// The control scheme gameplay touch input follows.
     pub fn touch_scheme(&self) -> TouchScheme {
         self.screens.touch.scheme
+    }
+
+    /// Whether the classic D-pad sprints while moving forward.
+    pub fn touch_classic_auto_sprint(&self) -> bool {
+        self.screens.touch.classic_auto_sprint
     }
 
     /// Whether touch play hides the crosshair because actions aim at the finger.

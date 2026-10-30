@@ -97,6 +97,10 @@ impl SettingsOptions {
             usize::try_from(self.value(super::SettingId::TouchControlScheme)).unwrap_or_default(),
         )
     }
+    /// Whether the classic D-pad sprints while it moves forward.
+    pub fn touch_classic_auto_sprint(&self) -> bool {
+        self.value(super::SettingId::TouchClassicAutoSprint) != 0
+    }
     /// Replaces a completed layout draft; callers persist only after Save.
     pub fn set_touch_layout(&mut self, mut layout: TouchLayout) {
         layout.validate();
@@ -117,6 +121,18 @@ mod tests {
         ));
         let decoded = SettingsOptions::decode(&serde_json::to_vec(&options).unwrap()).unwrap();
         assert_eq!(decoded.touch_scheme(), classic_tap);
+    }
+
+    #[test]
+    fn classic_auto_sprint_defaults_on_and_turns_off() {
+        let mut options = SettingsOptions::default();
+        assert!(options.touch_classic_auto_sprint());
+        assert!(options.set(
+            super::super::SettingId::TouchClassicAutoSprint.index(),
+            0
+        ));
+        let decoded = SettingsOptions::decode(&serde_json::to_vec(&options).unwrap()).unwrap();
+        assert!(!decoded.touch_classic_auto_sprint());
     }
 
     #[test]

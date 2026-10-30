@@ -189,12 +189,14 @@ fn schemes_choose_their_action_buttons_and_crosshair() {
         };
         assert!(painted(touch::JOYSTICK), "{scheme:?}");
         assert!(painted(touch::SNEAK), "{scheme:?}");
-        // Classic schemes jump from the D-pad's centre instead of a separate button.
-        assert_eq!(
-            painted(touch::JUMP),
-            scheme.movement == TouchMovement::Joystick,
-            "{scheme:?}"
-        );
+        // Classic schemes jump from the D-pad's centre and have no sprint button.
+        for id in [touch::JUMP, touch::SPRINT] {
+            assert_eq!(
+                painted(id),
+                scheme.movement == TouchMovement::Joystick,
+                "{scheme:?}"
+            );
+        }
         for id in [touch::ATTACK, touch::USE] {
             assert_eq!(painted(id), scheme.shows_action_buttons(), "{scheme:?}");
         }

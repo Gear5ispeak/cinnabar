@@ -99,7 +99,9 @@ server streaming, shader packs and performance still need their own acceptance r
 
 Settings > Touch > Control scheme picks one of four schemes. Classic schemes move with a
 D-pad whose centre diamond jumps and whose up-left and up-right diagonals appear while moving
-forward, with the crouch button on the right; Modern ones move with the stick. Tap schemes aim where the finger touches and hide
+forward, with the crouch button on the right and no sprint button. Settings > Touch >
+Classic auto-sprint, on by default, sprints whenever the D-pad moves forward. Modern schemes
+move with the stick. Tap schemes aim where the finger touches and hide
 the crosshair; crosshair schemes aim at the crosshair. In every scheme except Modern crosshair, a
 still tap outside the buttons uses or places (or attacks the mob the aim is on) and a still hold
 breaks; dragging first only turns. Modern crosshair, the default, keeps dedicated attack and use

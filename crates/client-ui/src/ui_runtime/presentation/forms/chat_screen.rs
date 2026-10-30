@@ -144,6 +144,7 @@ impl UiPresentationRuntime {
             self.screens.touch.saved = snapshot.0.touch_layout().clone();
         }
         self.screens.touch.scheme = snapshot.0.touch_scheme();
+        self.screens.touch.classic_auto_sprint = snapshot.0.touch_classic_auto_sprint();
         self.screens.chat.settings.set_snapshot(snapshot);
     }
 

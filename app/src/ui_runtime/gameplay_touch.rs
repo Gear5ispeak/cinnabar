@@ -308,12 +308,31 @@ pub(crate) fn drive_gameplay_touch_targets(
         for jump in held.iter().chain(&lifted).filter_map(dpad_jump) {
             targets.pulse(jump);
         }
+        if presentation.touch_classic_auto_sprint() {
+            for sprint in held.iter().filter_map(dpad_sprint) {
+                targets.pulse(sprint);
+            }
+        }
     }
 }
 
 /// Synthetic jump contacts carry the D-pad finger's id with this bit set, apart from platform
 /// ids and look-surface action contacts.
 const DPAD_JUMP_CONTACT: u64 = 1 << 62;
+/// Synthetic auto-sprint contacts carry the D-pad finger's id with this bit set.
+const DPAD_SPRINT_CONTACT: u64 = 1 << 61;
+
+/// With auto-sprint on, a D-pad finger in the forward row (up or a forward diagonal) also
+/// holds sprint, which the classic controls otherwise lack a button for.
+fn dpad_sprint(sample: &TouchContact) -> Option<TouchContact> {
+    let forward = matches!(dpad_press(sample.delta), DpadPress::Move([_, y]) if y > 0.0);
+    (sample.hit_id == Some(touch::JOYSTICK) && forward).then(|| TouchContact {
+        contact_id: sample.contact_id | DPAD_SPRINT_CONTACT,
+        delta: [0.0; 2],
+        hit_id: Some(touch::SPRINT),
+        ..sample.clone()
+    })
+}
 
 /// A finger on the D-pad's centre diamond holds jump through a synthetic contact of its own,
 /// while its stick contact stays put so sliding back onto an arrow moves again.
@@ -347,6 +366,26 @@ mod tests {
         assert_eq!(jump.hit_id, Some(touch::JUMP));
         assert_ne!(jump.contact_id, 4);
         assert!(dpad_jump(&finger([0.0, 0.9])).is_none());
+    }
+
+    /// Auto-sprint holds sprint only while the D-pad finger is in the forward row.
+    #[test]
+    fn dpad_auto_sprint_follows_the_forward_row() {
+        let finger = |delta| TouchContact {
+            contact_id: 5,
+            activity_sequence: 0,
+            position: [0.15, 0.55],
+            delta,
+            hit_id: Some(touch::JOYSTICK),
+        };
+        for forward in [[0.0, 0.9], [0.6, 0.6], [-0.6, 0.6]] {
+            let sprint = dpad_sprint(&finger(forward)).unwrap();
+            assert_eq!(sprint.hit_id, Some(touch::SPRINT));
+            assert_ne!(sprint.contact_id, 5);
+        }
+        for other in [[0.0, 0.0], [0.9, 0.0], [0.0, -0.9], [0.6, -0.6]] {
+            assert!(dpad_sprint(&finger(other)).is_none(), "{other:?}");
+        }
     }
 
     fn stick(_: [f32; 2]) -> Option<TouchControlRegion> {

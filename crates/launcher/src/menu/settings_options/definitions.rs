@@ -605,5 +605,7 @@ settings! {
         [(SettingPanel::Touch, 0)], [], None, None;
     TouchControlScheme => "touch_control_scheme", dropdown("Control scheme", TOUCH_SCHEMES, TOUCH_SCHEME_DEFAULT),
         [(SettingPanel::Touch, 1)], [], None, None;
+    TouchClassicAutoSprint => "touch_classic_auto_sprint", toggle("Classic auto-sprint", true),
+        [(SettingPanel::Touch, 2)], [], None, None;
 
 }

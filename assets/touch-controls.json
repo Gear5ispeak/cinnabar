@@ -459,7 +459,13 @@
           "$control": "cinnabar.touch.sprint",
           "$texture": "textures/ui/sprint",
           "$held_texture": "textures/ui/sprint_pressed",
-          "$held_binding": "#touch_sprint_pressed"
+          "$held_binding": "#touch_sprint_pressed",
+          "bindings": [
+            {
+              "binding_name": "#touch_scheme_joystick",
+              "binding_name_override": "#visible"
+            }
+          ]
         }
       },
       {
