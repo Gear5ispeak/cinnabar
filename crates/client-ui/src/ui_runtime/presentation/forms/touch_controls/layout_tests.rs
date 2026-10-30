@@ -204,6 +204,32 @@ fn schemes_choose_their_action_buttons_and_crosshair() {
     }
 }
 
+/// The button size setting resizes movement and action controls about their authored centres.
+#[test]
+fn button_size_scales_controls_about_their_centres() {
+    let Some(mut p) = pack_harness::engine_presentation() else {
+        return;
+    };
+    let runtime = pack_harness::menu_runtime();
+    let player = player_state::PlayerState::new(1);
+    p.enable_touch_controls(true);
+    let measure = |p: &mut UiPresentationRuntime, scale: f32| {
+        p.screens.touch.set_button_scale(scale);
+        paint(p, &player, &runtime, [1280, 700]);
+        let frame = p.screens.touch.frame.as_ref().unwrap();
+        let hit = frame
+            .hits
+            .iter()
+            .find(|hit| control_id(hit.pressed.as_deref()) == Some(touch::JUMP))
+            .unwrap();
+        (hit.rect.h, hit.rect.y + hit.rect.h / 2.)
+    };
+    let (height, centre) = measure(&mut p, 1.0);
+    let (doubled, doubled_centre) = measure(&mut p, 2.0);
+    assert!((doubled - height * 2.).abs() < 0.01, "{height} -> {doubled}");
+    assert!((doubled_centre - centre).abs() < 0.01);
+}
+
 /// Paints the overlay with deterministic in-memory fixtures, so menu interaction needs no install.
 fn paint_touch(p: &mut UiPresentationRuntime, runtime: &UiRuntime, size: [u32; 2]) {
     let metrics = TextMetrics::for_viewport(size, ui::DpiScale::new(1.).unwrap(), None);

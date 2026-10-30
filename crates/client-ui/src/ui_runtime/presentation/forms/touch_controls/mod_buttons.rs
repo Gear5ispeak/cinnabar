@@ -103,6 +103,19 @@ impl TouchControls {
             return;
         }
         self.mod_buttons = buttons.map(|(_, button)| button.clone()).collect();
+        self.rebuild_layout();
+    }
+
+    /// Resizes the movement and action controls, rebuilding the layout only on a change.
+    pub(in super::super::super) fn set_button_scale(&mut self, scale: f32) {
+        if self.button_scale != ButtonScale(scale) {
+            self.button_scale = ButtonScale(scale);
+            self.rebuild_layout();
+        }
+    }
+
+    /// Drops the cached layout and its geometry, so the next paint rebuilds both.
+    fn rebuild_layout(&mut self) {
         self.catalog = None;
         self.base = None;
         self.base_viewport = None;

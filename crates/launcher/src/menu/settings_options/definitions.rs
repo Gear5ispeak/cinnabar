@@ -607,5 +607,7 @@ settings! {
         [(SettingPanel::Touch, 1)], [], None, None;
     TouchClassicAutoSprint => "touch_classic_auto_sprint", toggle("Classic auto-sprint", true),
         [(SettingPanel::Touch, 2)], [], None, None;
+    TouchButtonSize => "touch_button_size", slider("Touch button size", 25, 100, 50),
+        [(SettingPanel::Touch, 3)], [], None, None;
 
 }

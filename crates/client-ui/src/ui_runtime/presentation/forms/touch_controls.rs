@@ -45,6 +45,16 @@ const UTILITY_ACTIONS: &[(&str, u16)] = &[
     ("dismiss_utilities", touch::DISMISS_UTILITIES),
 ];
 
+/// A touch control size multiplier; the authored layout is 1.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) struct ButtonScale(pub(super) f32);
+
+impl Default for ButtonScale {
+    fn default() -> Self {
+        Self(1.0)
+    }
+}
+
 #[derive(Default)]
 pub(in super::super) struct TouchControls {
     enabled: bool,
@@ -58,6 +68,8 @@ pub(in super::super) struct TouchControls {
     pub(super) scheme: TouchScheme,
     /// Whether the classic D-pad sprints while moving forward.
     pub(super) classic_auto_sprint: bool,
+    /// How much larger than authored the movement and action controls draw.
+    pub(super) button_scale: ButtonScale,
     base: Option<EngineFrame>,
     base_viewport: Option<([f32; 2], f32, ui::SafeArea)>,
     catalog: Option<Arc<Catalog>>,
@@ -201,7 +213,8 @@ impl UiPresentationRuntime {
             Some(catalog) => Arc::clone(catalog),
             None => {
                 let catalog = Arc::new(
-                    layout_catalog(&state.mod_buttons).expect("built-in touch layout parses"),
+                    layout_catalog(&state.mod_buttons, state.button_scale)
+                        .expect("built-in touch layout parses"),
                 );
                 state.catalog = Some(Arc::clone(&catalog));
                 catalog
@@ -394,9 +407,11 @@ fn sign(value: f32) -> i8 {
 /// The authored layout plus presented mod buttons, all placeable, and the editor captions.
 fn layout_catalog(
     mod_buttons: &[ui::mod_touch::TouchButton],
+    scale: ButtonScale,
 ) -> Result<Catalog, json_ui::LoadError> {
     let mut layout: serde_json::Value =
         serde_json::from_slice(LAYOUT).expect("built-in touch layout parses");
+    scale_controls(&mut layout, scale);
     mod_buttons::append_nodes(
         layout["screen"]["controls"]
             .as_array_mut()
@@ -431,6 +446,38 @@ fn layout_catalog(
         ),
         ("ui/cinnabar_touch.json", bytes.as_slice()),
     ])
+}
+
+/// Movement and action controls the button size setting resizes.
+const SCALED_CONTROLS: &[&str] = &["joystick", "jump", "sneak", "sprint", "attack", "use"];
+
+/// Multiplies the screen-height share of each scaled control. Widths are authored as a share of
+/// the control's own height, so controls stay square and keep their authored centres.
+fn scale_controls(layout: &mut serde_json::Value, scale: ButtonScale) {
+    if scale == ButtonScale::default() || !scale.0.is_finite() || scale.0 <= 0.0 {
+        return;
+    }
+    let controls = layout["screen"]["controls"]
+        .as_array_mut()
+        .expect("touch controls array");
+    for control in controls.iter_mut().filter_map(serde_json::Value::as_object_mut) {
+        for (key, properties) in control.iter_mut() {
+            let name = key.split('@').next().unwrap_or(key);
+            if !SCALED_CONTROLS.contains(&name) {
+                continue;
+            }
+            let Some(height) = properties.get_mut("size").and_then(|size| size.get_mut(1)) else {
+                continue;
+            };
+            if let Some(percent) = height
+                .as_str()
+                .and_then(|text| text.strip_suffix('%'))
+                .and_then(|number| number.parse::<f32>().ok())
+            {
+                *height = serde_json::Value::from(format!("{}%", percent * scale.0));
+            }
+        }
+    }
 }
 
 fn region_bounds(

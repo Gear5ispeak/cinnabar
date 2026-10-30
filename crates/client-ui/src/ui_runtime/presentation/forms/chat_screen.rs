@@ -145,6 +145,9 @@ impl UiPresentationRuntime {
         }
         self.screens.touch.scheme = snapshot.0.touch_scheme();
         self.screens.touch.classic_auto_sprint = snapshot.0.touch_classic_auto_sprint();
+        self.screens
+            .touch
+            .set_button_scale(snapshot.0.touch_button_scale());
         self.screens.chat.settings.set_snapshot(snapshot);
     }
 

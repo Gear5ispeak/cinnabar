@@ -97,6 +97,13 @@ impl SettingsOptions {
             usize::try_from(self.value(super::SettingId::TouchControlScheme)).unwrap_or_default(),
         )
     }
+    /// How much larger than the authored layout the movement and action controls draw, where
+    /// the slider's default is the authored size.
+    pub fn touch_button_scale(&self) -> f32 {
+        let id = super::SettingId::TouchButtonSize;
+        self.value(id) as f32 / id.definition().default as f32
+    }
+
     /// Whether the classic D-pad sprints while it moves forward.
     pub fn touch_classic_auto_sprint(&self) -> bool {
         self.value(super::SettingId::TouchClassicAutoSprint) != 0
@@ -121,6 +128,16 @@ mod tests {
         ));
         let decoded = SettingsOptions::decode(&serde_json::to_vec(&options).unwrap()).unwrap();
         assert_eq!(decoded.touch_scheme(), classic_tap);
+    }
+
+    #[test]
+    fn touch_buttons_default_to_the_authored_size_and_can_double() {
+        let mut options = SettingsOptions::default();
+        assert_eq!(options.touch_button_scale(), 1.0);
+        assert!(options.set(super::super::SettingId::TouchButtonSize.index(), 100));
+        assert_eq!(options.touch_button_scale(), 2.0);
+        assert!(options.set(super::super::SettingId::TouchButtonSize.index(), 25));
+        assert_eq!(options.touch_button_scale(), 0.5);
     }
 
     #[test]
