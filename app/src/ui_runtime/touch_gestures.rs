@@ -6,7 +6,9 @@ use bevy::{
     prelude::{Local, Res, ResMut},
     time::{Real, Time},
 };
-use semantic_input::{TouchAim, TouchContact, TouchGestures, TouchMovement, TouchScheme, touch};
+use semantic_input::{
+    TouchAim, TouchContact, TouchGestures, TouchIndicator, TouchMovement, TouchScheme, touch,
+};
 
 use crate::{camera::touch_aim::TouchAimPoint, semantic_controls::SemanticTouchTargets};
 
@@ -31,6 +33,7 @@ pub(crate) struct LookGestures<'w, 's> {
     aim: Option<ResMut<'w, TouchAimPoint>>,
     movement: Option<ResMut<'w, client_interaction::movement::MovementTicker>>,
     melee: Option<Res<'w, crate::melee::MeleeTarget>>,
+    mining: Option<Res<'w, client_interaction::survival_mining::SurvivalMiningRuntime>>,
 }
 
 impl LookGestures<'_, '_> {
@@ -44,20 +47,22 @@ impl LookGestures<'_, '_> {
     }
 
     /// Turns this frame's still look-surface fingers into action contacts for the router.
-    /// `held` are the fingers still down and `lifted` those that rose this frame.
+    /// `held` are the fingers still down and `lifted` those that rose this frame. Returns the
+    /// break ring to draw: at the acting finger in tap schemes, or the crosshair in crosshair
+    /// schemes, filled as far as the current break has progressed.
     pub(crate) fn route(
         &mut self,
         scheme: TouchScheme,
         held: &[TouchContact],
         lifted: &[TouchContact],
         targets: &mut SemanticTouchTargets,
-    ) {
+    ) -> Option<TouchIndicator> {
         if let Some(movement) = self.movement.as_mut() {
             movement.set_touch_interaction_model(interaction_model(scheme));
         }
         if scheme.shows_action_buttons() {
             self.reset();
-            return;
+            return None;
         }
         let now = self
             .time
@@ -100,6 +105,19 @@ impl LookGestures<'_, '_> {
                 .then(|| state.gestures.aim_point().or(lingering))
                 .flatten();
         }
+        let finger = state.gestures.aim_point()?;
+        let breaking = state.gestures.holding().next().is_some();
+        Some(TouchIndicator {
+            position: match scheme.aim {
+                TouchAim::Tap => finger,
+                TouchAim::Crosshair => [0.5, 0.5],
+            },
+            progress: self
+                .mining
+                .as_ref()
+                .and_then(|mining| mining.destroy_progress())
+                .filter(|_| breaking),
+        })
     }
 }
 

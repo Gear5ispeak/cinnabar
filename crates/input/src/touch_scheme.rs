@@ -113,6 +113,16 @@ pub const HOLD_SECONDS: f64 = 0.3;
 /// Viewport fraction a finger may travel and still count as still.
 pub const DRAG_DISTANCE: f32 = 0.02;
 
+/// Where a touch action aims and how far its break has progressed, for the ring the touch
+/// controls draw there.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TouchIndicator {
+    /// Viewport fraction from the top left.
+    pub position: [f32; 2],
+    /// Break progress from 0 to 1; none draws the empty ring.
+    pub progress: Option<f32>,
+}
+
 /// What a look-surface finger currently does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GesturePhase {

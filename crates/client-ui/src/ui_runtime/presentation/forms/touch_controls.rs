@@ -19,6 +19,7 @@ use super::super::{UiPresentationError, UiPresentationRuntime};
 use crate::ui_runtime::UiRuntime;
 
 mod editor;
+mod indicator;
 mod mod_buttons;
 mod utilities;
 
@@ -70,6 +71,8 @@ pub(in super::super) struct TouchControls {
     pub(super) classic_auto_sprint: bool,
     /// How much larger than authored the movement and action controls draw.
     pub(super) button_scale: ButtonScale,
+    /// The break ring where a touch action aims, if a finger is acting.
+    indicator: Option<semantic_input::TouchIndicator>,
     base: Option<EngineFrame>,
     base_viewport: Option<([f32; 2], f32, ui::SafeArea)>,
     catalog: Option<Arc<Catalog>>,
@@ -345,6 +348,11 @@ impl UiPresentationRuntime {
             let knob = frame.hits.iter().find(|hit| hit.name == "knob")?;
             Some((knob.key.clone(), [knob.rect.w, knob.rect.h]))
         });
+        if state.editor.is_none()
+            && let Some(ring) = state.indicator
+        {
+            indicator::append(&mut paint, ring)?;
+        }
         Ok(())
     }
 }

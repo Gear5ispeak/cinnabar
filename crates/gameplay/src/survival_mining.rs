@@ -239,6 +239,13 @@ impl DestroyMachine {
             .map(|destroying| (destroying.position, destroying.face))
     }
 
+    /// How far the block being broken has cracked, from 0 to 1; none while nothing breaks.
+    pub fn destroy_progress(&self) -> Option<f32> {
+        self.destroying
+            .filter(|destroying| !destroying.completed)
+            .map(|destroying| destroying.progress.clamp(0.0, 1.0))
+    }
+
     /// Forgets unsent progress; an in-flight destroy is aborted on the next step.
     pub fn interrupt(&mut self) {
         if let Some(destroying) = self.destroying.take() {
@@ -452,6 +459,11 @@ impl SurvivalMiningRuntime {
     /// The block and face the local player is breaking, for hit particles.
     pub fn destroying_target(&self) -> Option<([i32; 3], u8)> {
         self.machine.destroying_target()
+    }
+
+    /// How far the local player's current break has progressed, for touch feedback.
+    pub fn destroy_progress(&self) -> Option<f32> {
+        self.machine.destroy_progress()
     }
 
     /// Takes local destroy effects after their block actions were attached to a tick.

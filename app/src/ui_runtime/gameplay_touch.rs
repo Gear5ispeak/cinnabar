@@ -166,6 +166,7 @@ pub(crate) fn drive_gameplay_touch_targets(
         state.clear();
         gestures.reset();
         presentation.set_touch_contacts(Vec::new());
+        presentation.set_touch_indicator(None);
         presentation.close_touch_utilities();
         return;
     };
@@ -248,6 +249,7 @@ pub(crate) fn drive_gameplay_touch_targets(
             state.clear();
             gestures.reset();
             presentation.set_touch_contacts(Vec::new());
+            presentation.set_touch_indicator(None);
             return;
         }
     };
@@ -264,7 +266,8 @@ pub(crate) fn drive_gameplay_touch_targets(
     let held = state.sample();
     presentation.set_touch_contacts(held.clone());
     let scheme = presentation.touch_scheme();
-    gestures.route(scheme, &held, &lifted, &mut targets);
+    let indicator = gestures.route(scheme, &held, &lifted, &mut targets);
+    presentation.set_touch_indicator(indicator);
     let dpad = scheme.movement == TouchMovement::Dpad;
     let look_scaled = |sample: TouchContact| {
         if dpad && sample.hit_id == Some(touch::JOYSTICK) {

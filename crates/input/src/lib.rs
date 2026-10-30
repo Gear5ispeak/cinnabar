@@ -99,8 +99,8 @@ mod touch_controls;
 pub use touch_controls::{TouchBounds, TouchControlRegion, TouchControlState};
 mod touch_scheme;
 pub use touch_scheme::{
-    DpadPress, GesturePhase, Tap, TouchAim, TouchGestures, TouchMovement, TouchScheme,
-    dpad_press,
+    DpadPress, GesturePhase, Tap, TouchAim, TouchGestures, TouchIndicator, TouchMovement,
+    TouchScheme, dpad_press,
 };
 
 pub mod cursor_focus;
