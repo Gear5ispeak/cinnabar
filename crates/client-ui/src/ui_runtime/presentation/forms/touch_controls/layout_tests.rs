@@ -230,6 +230,30 @@ fn button_size_scales_controls_about_their_centres() {
     assert!((doubled_centre - centre).abs() < 0.01);
 }
 
+/// Enlarged controls slide back inside the screen instead of running past its edge.
+#[test]
+fn enlarged_controls_stay_on_screen() {
+    let Some(mut p) = pack_harness::engine_presentation() else {
+        return;
+    };
+    let runtime = pack_harness::menu_runtime();
+    let player = player_state::PlayerState::new(1);
+    p.enable_touch_controls(true);
+    p.screens.touch.set_button_scale(2.0);
+    let size = [1280, 700];
+    paint(&mut p, &player, &runtime, size);
+    let window = size.map(|value| value as f32);
+    for id in [touch::JOYSTICK, touch::JUMP, touch::SNEAK, touch::USE] {
+        let region = hit_center(&p, id, size);
+        let bounds = region.bounds;
+        assert!(
+            bounds.min.iter().all(|v| *v >= -0.001) && bounds.max.iter().all(|v| *v <= 1.001),
+            "{id}: {bounds:?} in {window:?}"
+        );
+        assert_eq!(region.hit_id, id);
+    }
+}
+
 /// Paints the overlay with deterministic in-memory fixtures, so menu interaction needs no install.
 fn paint_touch(p: &mut UiPresentationRuntime, runtime: &UiRuntime, size: [u32; 2]) {
     let metrics = TextMetrics::for_viewport(size, ui::DpiScale::new(1.).unwrap(), None);

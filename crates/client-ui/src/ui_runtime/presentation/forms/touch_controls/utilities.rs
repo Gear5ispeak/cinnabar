@@ -99,18 +99,25 @@ pub(super) fn place_controls(
             let Some(name) = mod_buttons::placement_name(&state.mod_buttons, name) else {
                 continue;
             };
+            let travel = [
+                (f64::from(content[0] / px) - hit.rect.w).max(0.),
+                (f64::from(content[1] / px) - hit.rect.h).max(0.),
+            ];
             let desired = if let Some(editor) = &state.editor {
                 editor
                     .rectangles()
                     .find(|(id, _)| *id == name)
                     .map(|(_, r)| [r[0], r[1]])
             } else {
-                saved.position(&name).map(|position| {
+                // A control enlarged past the safe screen edge slides back inside it.
+                let at = saved.position(&name).map_or([hit.rect.x, hit.rect.y], |position| {
                     [
-                        f64::from(position[0]) * (f64::from(content[0] / px) - hit.rect.w).max(0.),
-                        f64::from(position[1]) * (f64::from(content[1] / px) - hit.rect.h).max(0.),
+                        f64::from(position[0]) * travel[0],
+                        f64::from(position[1]) * travel[1],
                     ]
-                })
+                });
+                Some([at[0].clamp(0., travel[0]), at[1].clamp(0., travel[1])])
+                    .filter(|at| *at != [hit.rect.x, hit.rect.y])
             };
             if let Some(at) = desired {
                 view.drags
