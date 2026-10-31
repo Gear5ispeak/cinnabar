@@ -273,6 +273,17 @@ fn borrowed_world_cores_run_as_wide_as_the_world_pool_at_normal_priority() {
     assert!(lowered.iter().all(|lowered| !*lowered), "{lowered:?}");
 }
 
+/// The memory iOS still allows bounds the borrowed threads, never below one.
+#[test]
+fn borrowed_threads_fit_the_remaining_memory() {
+    let gib = BORROWED_THREAD_BYTES;
+    assert_eq!(memory_limited_threads(4, 6 * gib), 4);
+    assert_eq!(memory_limited_threads(4, 2 * gib + gib / 2), 2);
+    // About what a phone at its normal limit has left when a large server pack compiles.
+    assert_eq!(memory_limited_threads(4, 2024 << 20), 1);
+    assert_eq!(memory_limited_threads(4, 0), 1);
+}
+
 /// Draining returns immediately on an empty queue and executes only one accepted job.
 #[test]
 fn local_driver_runs_one_job_and_reuses_the_native_queue_order() {

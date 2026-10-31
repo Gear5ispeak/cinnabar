@@ -48,7 +48,9 @@ Developer Mode**, restart when asked, and if iOS says the developer is untrusted
   their Microsoft Store versions; open the `-assets` IPA in it and sign in.
 
 iOS stops an app that passes its memory limit, about 3.3 GB on a 12 GB iPhone, and servers that
-send large resource packs can pass it while the world loads. The App ID's **Increased Memory
+send large resource packs can pass it while the world loads. The iOS client compiles a server's packs on as many
+threads as the remaining budget holds, about 1 GiB each and at least one, so a large pack joins
+more slowly rather than compiling on every core at once. The App ID's **Increased Memory
 Limit** capability raises the limit. iloader's Import IPA leaves it off, but once it is on for
 the App ID, later installs keep it; `isideload`'s `install_app` turns it on when its
 `increased_memory_limit` argument is true. The workflow also builds `Cinnabar-<version>-memory-unsigned.ipa`, whose

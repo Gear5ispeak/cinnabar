@@ -216,13 +216,54 @@ fn capped_cores(available: usize, requested: Option<&str>) -> usize {
         .map_or(available, |cores| cores.min(available))
 }
 
-/// Runs pre-stream work on a temporary normal-priority pool sized like the world pool.
-/// Falls back to the caller pool if worker threads cannot start.
+/// Memory one borrowed compile thread may hold at its peak, sizing the pool to the memory an
+/// iOS process may still allocate.
+#[cfg(any(test, target_os = "ios"))]
+const BORROWED_THREAD_BYTES: u64 = 1 << 30;
+
+/// Limits `threads` to the borrowed threads `available` bytes can hold, keeping at least one.
+/// A server's large packs compiled on every core at once can exhaust a phone's memory budget,
+/// which iOS enforces by ending the app; fewer threads join more slowly but hold less at once.
+#[cfg(any(test, target_os = "ios"))]
+fn memory_limited_threads(threads: usize, available: u64) -> usize {
+    let affordable = usize::try_from(available / BORROWED_THREAD_BYTES).unwrap_or(usize::MAX);
+    threads.min(affordable).max(1)
+}
+
+/// Borrowed threads for pre-stream work: the world pool's width, narrowed on iOS to the
+/// memory the process may still allocate.
+#[cfg(not(target_arch = "wasm32"))]
+fn borrowed_threads(cores: usize) -> usize {
+    #[cfg(target_os = "ios")]
+    {
+        unsafe extern "C" {
+            /// libSystem's remaining allocation budget before the process's memory limit.
+            fn os_proc_available_memory() -> usize;
+        }
+        // SAFETY: the call takes no arguments and only reads the process's budget.
+        let available = unsafe { os_proc_available_memory() } as u64;
+        let threads = memory_limited_threads(world_worker_threads(cores), available);
+        if threads < world_worker_threads(cores) {
+            tracing::info!(
+                threads,
+                available_mib = available >> 20,
+                "narrowed borrowed world threads to the memory iOS still allows"
+            );
+        }
+        threads
+    }
+    #[cfg(not(target_os = "ios"))]
+    world_worker_threads(cores)
+}
+
+/// Runs pre-stream work on a temporary normal-priority pool sized like the world pool, or
+/// narrower where memory is scarce. Falls back to the caller pool if worker threads cannot
+/// start.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn on_idle_world_cores<T: Send>(work: impl FnOnce() -> T + Send) -> T {
     let cores = logical_cores();
     match rayon::ThreadPoolBuilder::new()
-        .num_threads(world_worker_threads(cores))
+        .num_threads(borrowed_threads(cores))
         .thread_name(|index| format!("world-borrowed-{index}"))
         .build()
     {
