@@ -7,8 +7,8 @@ use bevy::{
     window::{PrimaryWindow, Window},
 };
 use semantic_input::{
-    DpadPress, TouchContact, TouchControlRegion, TouchControlState, TouchMovement, dpad_press,
-    touch,
+    DpadFingers, DpadInput, DpadPress, TouchContact, TouchControlRegion, TouchControlState,
+    TouchMovement, dpad_press, touch,
 };
 
 use crate::semantic_controls::SemanticTouchTargets;
@@ -143,6 +143,7 @@ pub(crate) fn drive_gameplay_touch_targets(
     mut mod_button_epoch: Local<u64>,
     world: Option<Res<crate::runtime::world::ClientWorld>>,
     mut gestures: super::touch_gestures::LookGestures,
+    mut dpad_fingers: Local<DpadFingers>,
 ) {
     targets.release_all();
     // Every event is consumed each frame, so none replays once gameplay regains input.
@@ -197,6 +198,8 @@ pub(crate) fn drive_gameplay_touch_targets(
             ];
             (event.id, event.phase, position)
         });
+    // Each D-pad arrow takes its own finger; the analog stick keeps one owner.
+    state.set_shared_stick(presentation.touch_scheme().movement == TouchMovement::Dpad);
     let TouchFrame {
         lifted,
         pressed,
@@ -269,13 +272,22 @@ pub(crate) fn drive_gameplay_touch_targets(
     let indicator = gestures.route(scheme, &held, &lifted, &mut targets);
     presentation.set_touch_indicator(indicator);
     let dpad = scheme.movement == TouchMovement::Dpad;
+    // Every D-pad finger routes the fingers' combined movement, so the router's strongest-stick
+    // choice cannot drop an arrow another finger holds.
+    let dpad_input = if dpad {
+        let fingers: Vec<_> = held
+            .iter()
+            .filter(|contact| contact.hit_id == Some(touch::JOYSTICK))
+            .map(|contact| (contact.contact_id, contact.delta))
+            .collect();
+        dpad_fingers.update(&fingers)
+    } else {
+        DpadInput::default()
+    };
     let look_scaled = |sample: TouchContact| {
         if dpad && sample.hit_id == Some(touch::JOYSTICK) {
             TouchContact {
-                delta: match dpad_press(sample.delta) {
-                    DpadPress::Move(vector) => vector,
-                    DpadPress::Jump | DpadPress::Nothing => [0.0; 2],
-                },
+                delta: dpad_input.movement,
                 ..sample
             }
         } else if sample.hit_id == Some(touch::LOOK_SURFACE) {
@@ -308,46 +320,45 @@ pub(crate) fn drive_gameplay_touch_targets(
         }
     }
     if dpad {
-        for jump in held.iter().chain(&lifted).filter_map(dpad_jump) {
-            targets.pulse(jump);
-        }
-        if presentation.touch_classic_auto_sprint() {
-            for sprint in held.iter().filter_map(dpad_sprint) {
-                targets.pulse(sprint);
-            }
+        // A tap on the diamond shorter than a frame still jumps.
+        let tapped_jump = lifted.iter().any(|contact| {
+            contact.hit_id == Some(touch::JOYSTICK) && dpad_press(contact.delta) == DpadPress::Jump
+        });
+        for action in dpad_actions(
+            dpad_input,
+            tapped_jump,
+            presentation.touch_classic_auto_sprint(),
+        ) {
+            targets.pulse(action);
         }
     }
 }
 
-/// Synthetic jump contacts carry the D-pad finger's id with this bit set, apart from platform
-/// ids and look-surface action contacts.
+/// The synthetic jump contact's id, apart from platform ids and look-surface action contacts.
 const DPAD_JUMP_CONTACT: u64 = 1 << 62;
-/// Synthetic auto-sprint contacts carry the D-pad finger's id with this bit set.
+/// The synthetic auto-sprint contact's id.
 const DPAD_SPRINT_CONTACT: u64 = 1 << 61;
 
-/// With auto-sprint on, a D-pad finger in the forward row (up or a forward diagonal) also
-/// holds sprint, which the classic controls otherwise lack a button for.
-fn dpad_sprint(sample: &TouchContact) -> Option<TouchContact> {
-    let forward = matches!(dpad_press(sample.delta), DpadPress::Move([_, y]) if y > 0.0);
-    (sample.hit_id == Some(touch::JOYSTICK) && forward).then(|| TouchContact {
-        contact_id: sample.contact_id | DPAD_SPRINT_CONTACT,
+/// Jump while a finger is on the D-pad's centre diamond (or tapped it this frame), and, with
+/// auto-sprint on, sprint while the combined movement goes forward, which the classic
+/// controls otherwise lack a button for. Constant ids keep each one held across frames,
+/// whichever finger presses it, so changing fingers never releases the sprint.
+fn dpad_actions(input: DpadInput, tapped_jump: bool, auto_sprint: bool) -> Vec<TouchContact> {
+    let action = |contact_id, hit_id| TouchContact {
+        contact_id,
+        activity_sequence: 0,
+        position: [0.0; 2],
         delta: [0.0; 2],
-        hit_id: Some(touch::SPRINT),
-        ..sample.clone()
-    })
-}
-
-/// A finger on the D-pad's centre diamond holds jump through a synthetic contact of its own,
-/// while its stick contact stays put so sliding back onto an arrow moves again.
-fn dpad_jump(sample: &TouchContact) -> Option<TouchContact> {
-    (sample.hit_id == Some(touch::JOYSTICK) && dpad_press(sample.delta) == DpadPress::Jump).then(
-        || TouchContact {
-            contact_id: sample.contact_id | DPAD_JUMP_CONTACT,
-            delta: [0.0; 2],
-            hit_id: Some(touch::JUMP),
-            ..sample.clone()
-        },
-    )
+        hit_id: Some(hit_id),
+    };
+    let mut actions = Vec::new();
+    if input.jump || tapped_jump {
+        actions.push(action(DPAD_JUMP_CONTACT, touch::JUMP));
+    }
+    if auto_sprint && input.movement[1] > 0.0 {
+        actions.push(action(DPAD_SPRINT_CONTACT, touch::SPRINT));
+    }
+    actions
 }
 
 #[cfg(test)]
@@ -355,40 +366,32 @@ mod tests {
     use super::*;
     use semantic_input::TouchBounds;
 
-    /// The D-pad's centre holds jump on a contact of its own; an arrow does not.
+    /// Jump and auto-sprint hold together while running forward, on constant contacts.
     #[test]
-    fn the_dpad_centre_jumps_and_arrows_do_not() {
-        let finger = |delta| TouchContact {
-            contact_id: 4,
-            activity_sequence: 0,
-            position: [0.15, 0.55],
-            delta,
-            hit_id: Some(touch::JOYSTICK),
+    fn dpad_jump_and_auto_sprint_hold_together() {
+        let running_jump = DpadInput {
+            movement: [0.0, 1.0],
+            jump: true,
         };
-        let jump = dpad_jump(&finger([0.0, 0.1])).unwrap();
-        assert_eq!(jump.hit_id, Some(touch::JUMP));
-        assert_ne!(jump.contact_id, 4);
-        assert!(dpad_jump(&finger([0.0, 0.9])).is_none());
-    }
-
-    /// Auto-sprint holds sprint only while the D-pad finger is in the forward row.
-    #[test]
-    fn dpad_auto_sprint_follows_the_forward_row() {
-        let finger = |delta| TouchContact {
-            contact_id: 5,
-            activity_sequence: 0,
-            position: [0.15, 0.55],
-            delta,
-            hit_id: Some(touch::JOYSTICK),
+        let actions = dpad_actions(running_jump, false, true);
+        let held: Vec<_> = actions.iter().map(|action| action.hit_id).collect();
+        assert_eq!(held, [Some(touch::JUMP), Some(touch::SPRINT)]);
+        assert_eq!(
+            dpad_actions(running_jump, false, true),
+            actions,
+            "the same contacts every frame"
+        );
+        // Without auto-sprint only the jump is synthesized; double-tapping up still sprints.
+        assert_eq!(dpad_actions(running_jump, false, false).len(), 1);
+        let backwards = DpadInput {
+            movement: [0.0, -1.0],
+            jump: false,
         };
-        for forward in [[0.0, 0.9], [0.6, 0.6], [-0.6, 0.6]] {
-            let sprint = dpad_sprint(&finger(forward)).unwrap();
-            assert_eq!(sprint.hit_id, Some(touch::SPRINT));
-            assert_ne!(sprint.contact_id, 5);
-        }
-        for other in [[0.0, 0.0], [0.9, 0.0], [0.0, -0.9], [0.6, -0.6]] {
-            assert!(dpad_sprint(&finger(other)).is_none(), "{other:?}");
-        }
+        assert!(dpad_actions(backwards, false, true).is_empty());
+        assert_eq!(
+            dpad_actions(DpadInput::default(), true, false)[0].hit_id,
+            Some(touch::JUMP)
+        );
     }
 
     fn stick(_: [f32; 2]) -> Option<TouchControlRegion> {

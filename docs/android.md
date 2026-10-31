@@ -99,7 +99,10 @@ server streaming, shader packs and performance still need their own acceptance r
 
 Settings > Touch > Control scheme picks one of four schemes. Classic schemes move with a
 D-pad whose centre diamond jumps and whose up-left and up-right diagonals appear while moving
-forward, with the crouch button on the right and no sprint button. Settings > Touch >
+forward, with the crouch button on the right and no sprint button. Several fingers can press
+the D-pad at once and their arrows combine, so one finger can hold up while another presses
+left, right or jump; a finger that slides from up onto the jump diamond keeps moving forward,
+so a sprint carries through the jump. Settings > Touch >
 Classic auto-sprint, on by default, sprints whenever the D-pad moves forward. Touch button size
 resizes the stick or D-pad and the action buttons from half to double the default. Modern schemes
 move with the stick. Tap schemes aim where the finger touches and hide

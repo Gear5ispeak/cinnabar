@@ -166,3 +166,22 @@ fn an_ended_finger_frees_its_id_for_a_new_contact_in_the_same_frame() {
     assert_eq!(held[0].hit_id, Some(touch::JOYSTICK));
     assert_eq!(state.end(8), None);
 }
+
+/// A D-pad's arrows take one finger each, while the analog stick keeps a single owner.
+#[test]
+fn a_shared_stick_captures_every_finger() {
+    let mut state = TouchControlState::default();
+    assert!(state.begin(1, [0.2, 0.7], 1, Some(region(touch::JOYSTICK))));
+    assert!(!state.begin(2, [0.15, 0.8], 2, Some(region(touch::JOYSTICK))));
+    let mut shared = TouchControlState::default();
+    shared.set_shared_stick(true);
+    assert!(shared.begin(1, [0.2, 0.7], 1, Some(region(touch::JOYSTICK))));
+    assert!(shared.begin(2, [0.15, 0.8], 2, Some(region(touch::JOYSTICK))));
+    let samples = shared.sample();
+    assert_eq!(samples.len(), 2);
+    assert!(
+        samples
+            .iter()
+            .all(|sample| sample.hit_id == Some(touch::JOYSTICK))
+    );
+}

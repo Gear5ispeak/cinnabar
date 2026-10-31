@@ -58,11 +58,20 @@ struct CapturedContact {
 #[derive(Clone, Debug, Default)]
 pub struct TouchControlState {
     contacts: Vec<CapturedContact>,
+    /// Several fingers may hold the stick, as on the classic D-pad's separate arrows.
+    shared_stick: bool,
 }
 
 impl TouchControlState {
-    /// Captures a new finger; `None` (or a second finger on the stick or look surface) tracks it
-    /// without a control for its whole lifetime. Returns whether it captured a control.
+    /// Lets later fingers capture the stick while one already holds it, for a D-pad whose
+    /// arrows each finger presses separately.
+    pub fn set_shared_stick(&mut self, shared: bool) {
+        self.shared_stick = shared;
+    }
+
+    /// Captures a new finger; `None` (or a second finger on the look surface, or on the stick
+    /// unless it is shared) tracks it without a control for its whole lifetime. Returns whether
+    /// it captured a control.
     pub fn begin(
         &mut self,
         contact_id: u64,
@@ -84,6 +93,7 @@ impl TouchControlState {
                 && region.bounds.valid()
                 && region.bounds.contains(position)
                 && (!matches!(region.hit_id, touch::JOYSTICK | touch::LOOK_SURFACE)
+                    || (self.shared_stick && region.hit_id == touch::JOYSTICK)
                     || !self.contacts.iter().any(|held| {
                         held.region
                             .is_some_and(|other| other.hit_id == region.hit_id)

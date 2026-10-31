@@ -367,8 +367,8 @@ const DPAD_ARROWS: &[(&str, [i8; 2])] = &[
     ("up_right", [1, 1]),
 ];
 
-/// Publishes which movement control and action buttons `scheme` shows, and which D-pad cell
-/// the stick finger in `contacts` holds. The forward diagonals show only while that finger is
+/// Publishes which movement control and action buttons `scheme` shows, and which D-pad cells
+/// the fingers in `contacts` hold. The forward diagonals show only while that finger is
 /// in the forward row, as on Bedrock's classic D-pad.
 fn set_scheme_globals(data: &mut DataSource, scheme: TouchScheme, contacts: &[TouchContact]) {
     let dpad = scheme.movement == TouchMovement::Dpad;
@@ -378,26 +378,31 @@ fn set_scheme_globals(data: &mut DataSource, scheme: TouchScheme, contacts: &[To
         "#touch_action_buttons",
         Scalar::Bool(scheme.shows_action_buttons()),
     );
-    let press = contacts
+    // Every finger on the D-pad lights the cell it presses.
+    let presses: Vec<_> = contacts
         .iter()
-        .find(|contact| contact.hit_id == Some(touch::JOYSTICK))
-        .map(|contact| dpad_press(contact.delta));
-    let held = match press {
-        Some(DpadPress::Move([x, y])) => Some([sign(x), sign(y)]),
-        _ => None,
-    };
+        .filter(|contact| contact.hit_id == Some(touch::JOYSTICK))
+        .map(|contact| dpad_press(contact.delta))
+        .collect();
+    let held: Vec<_> = presses
+        .iter()
+        .filter_map(|press| match press {
+            DpadPress::Move([x, y]) => Some([sign(*x), sign(*y)]),
+            DpadPress::Jump | DpadPress::Nothing => None,
+        })
+        .collect();
     data.set_global(
         "#touch_dpad_forward",
-        Scalar::Bool(held.is_some_and(|[_, y]| y > 0)),
+        Scalar::Bool(held.iter().any(|[_, y]| *y > 0)),
     );
     data.set_global(
         "#touch_dpad_jump_pressed",
-        Scalar::Bool(press == Some(DpadPress::Jump)),
+        Scalar::Bool(presses.contains(&DpadPress::Jump)),
     );
     for &(name, direction) in DPAD_ARROWS {
         data.set_global(
             format!("#touch_dpad_{name}_pressed"),
-            Scalar::Bool(held == Some(direction)),
+            Scalar::Bool(held.contains(&direction)),
         );
     }
 }

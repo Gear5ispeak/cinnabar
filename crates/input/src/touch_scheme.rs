@@ -113,6 +113,93 @@ pub const HOLD_SECONDS: f64 = 0.3;
 /// Viewport fraction a finger may travel and still count as still.
 pub const DRAG_DISTANCE: f32 = 0.02;
 
+/// Every finger on the classic D-pad this frame, combined.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct DpadInput {
+    /// The pressed arrows together, like held movement keys: full speed, with a normalized
+    /// diagonal when two axes are pressed.
+    pub movement: [f32; 2],
+    /// A finger is on the centre diamond.
+    pub jump: bool,
+}
+
+/// Combines the fingers on the classic D-pad. Each finger presses its own cell, so one finger
+/// can hold up while another presses left or jump. A finger that slides from the forward row
+/// onto the jump diamond keeps moving the way it was going, so a sprint carries through the
+/// jump.
+#[derive(Clone, Debug, Default)]
+pub struct DpadFingers {
+    /// Each finger's last forward-row movement, kept while it rests on the jump diamond.
+    forward: Vec<(u64, [f32; 2])>,
+}
+
+impl DpadFingers {
+    /// Combines `fingers`, each a contact id and its deflection over the D-pad, and forgets
+    /// fingers that lifted.
+    pub fn update(&mut self, fingers: &[(u64, [f32; 2])]) -> DpadInput {
+        self.forward
+            .retain(|(id, _)| fingers.iter().any(|(finger, _)| finger == id));
+        let mut sum = [0.0_f32; 2];
+        let mut jump = false;
+        for &(id, deflection) in fingers {
+            let moved = match dpad_press(deflection) {
+                DpadPress::Move(vector) => {
+                    self.remember(id, (vector[1] > 0.0).then_some(vector));
+                    Some(vector)
+                }
+                DpadPress::Jump => {
+                    jump = true;
+                    self.forward
+                        .iter()
+                        .find(|(finger, _)| *finger == id)
+                        .map(|(_, vector)| *vector)
+                }
+                DpadPress::Nothing => {
+                    self.remember(id, None);
+                    None
+                }
+            };
+            if let Some(vector) = moved {
+                sum[0] += vector[0];
+                sum[1] += vector[1];
+            }
+        }
+        DpadInput {
+            movement: digital(sum),
+            jump,
+        }
+    }
+
+    fn remember(&mut self, id: u64, forward: Option<[f32; 2]>) {
+        self.forward.retain(|(finger, _)| *finger != id);
+        if let Some(vector) = forward {
+            self.forward.push((id, vector));
+        }
+    }
+}
+
+/// Reduces summed arrow presses to whole axes, with a keyboard's normalized diagonal.
+fn digital(sum: [f32; 2]) -> [f32; 2] {
+    let axis = |value: f32| {
+        if value > 1e-4 {
+            1.0
+        } else if value < -1e-4 {
+            -1.0
+        } else {
+            0.0
+        }
+    };
+    let [x, y] = sum.map(axis);
+    if x != 0.0 && y != 0.0 {
+        [
+            x * std::f32::consts::FRAC_1_SQRT_2,
+            y * std::f32::consts::FRAC_1_SQRT_2,
+        ]
+    } else {
+        [x, y]
+    }
+}
+
 /// Where a touch action aims and how far its break has progressed, for the ring the touch
 /// controls draw there.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -286,6 +373,52 @@ mod tests {
         assert_eq!(dpad_press([-0.6, -0.6]), DpadPress::Nothing);
         assert_eq!(dpad_press([0.6, -0.6]), DpadPress::Nothing);
         assert_eq!(dpad_press([f32::NAN, 0.1]), DpadPress::Jump);
+    }
+
+    const UP: [f32; 2] = [0.0, 0.9];
+    const LEFT: [f32; 2] = [-0.9, 0.0];
+    const DOWN: [f32; 2] = [0.0, -0.9];
+    const CENTRE: [f32; 2] = [0.0, 0.0];
+
+    #[test]
+    fn two_dpad_fingers_combine_their_arrows() {
+        let mut dpad = DpadFingers::default();
+        let input = dpad.update(&[(1, UP), (2, LEFT)]);
+        let d = std::f32::consts::FRAC_1_SQRT_2;
+        assert_eq!(input.movement, [-d, d]);
+        assert!(!input.jump);
+        assert_eq!(dpad.update(&[(1, UP), (2, DOWN)]).movement, [0.0, 0.0]);
+    }
+
+    #[test]
+    fn jumping_with_another_finger_keeps_moving() {
+        let mut dpad = DpadFingers::default();
+        let input = dpad.update(&[(1, UP), (2, CENTRE)]);
+        assert_eq!(input.movement, [0.0, 1.0]);
+        assert!(input.jump);
+    }
+
+    #[test]
+    fn sliding_from_up_onto_jump_keeps_going_forward() {
+        let mut dpad = DpadFingers::default();
+        dpad.update(&[(1, UP)]);
+        let input = dpad.update(&[(1, CENTRE)]);
+        assert_eq!(input.movement, [0.0, 1.0]);
+        assert!(input.jump);
+        // Sliding back onto an arrow moves that way again.
+        assert_eq!(dpad.update(&[(1, LEFT)]).movement, [-1.0, 0.0]);
+    }
+
+    #[test]
+    fn a_press_straight_on_jump_only_jumps() {
+        let mut dpad = DpadFingers::default();
+        let input = dpad.update(&[(1, CENTRE)]);
+        assert_eq!(input.movement, [0.0, 0.0]);
+        assert!(input.jump);
+        // A finger that comes back down onto the diamond starts fresh.
+        dpad.update(&[(2, UP)]);
+        dpad.update(&[]);
+        assert_eq!(dpad.update(&[(2, CENTRE)]).movement, [0.0, 0.0]);
     }
 
     #[test]
