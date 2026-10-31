@@ -14,6 +14,54 @@ pub fn physical_bytes() -> u64 {
     })
 }
 
+/// Logs how much memory iOS still lets this process allocate before it ends the app, which it
+/// does without any crash report the app can write. A fall towards zero in the client log is
+/// the only in-app record of such an exit, such as while a server's large packs load.
+#[cfg(target_os = "ios")]
+pub fn spawn_headroom_log() {
+    /// Samples often enough to catch a pack load's climb before the exit.
+    const PERIOD: std::time::Duration = std::time::Duration::from_secs(2);
+    /// Headroom change that is worth a line, and the level below which every sample is.
+    const STEP: u64 = 64 << 20;
+    const LOW: u64 = 512 << 20;
+    unsafe extern "C" {
+        /// libSystem's remaining allocation budget before the process's memory limit.
+        fn os_proc_available_memory() -> usize;
+    }
+    let spawned = std::thread::Builder::new()
+        .name("memory-headroom".into())
+        .spawn(|| {
+            let mut logged: Option<u64> = None;
+            let mut lowest = u64::MAX;
+            loop {
+                // SAFETY: the call takes no arguments and only reads the process's budget.
+                let available = unsafe { os_proc_available_memory() } as u64;
+                lowest = lowest.min(available);
+                if logged.is_none_or(|last| last.abs_diff(available) >= STEP) || available < LOW {
+                    let mib = |bytes: u64| bytes >> 20;
+                    if available < LOW {
+                        tracing::warn!(
+                            available_mib = mib(available),
+                            lowest_mib = mib(lowest),
+                            "memory headroom low; iOS ends the app when it reaches zero"
+                        );
+                    } else {
+                        tracing::info!(
+                            available_mib = mib(available),
+                            lowest_mib = mib(lowest),
+                            "memory headroom"
+                        );
+                    }
+                    logged = Some(available);
+                }
+                std::thread::sleep(PERIOD);
+            }
+        });
+    if let Err(error) = spawned {
+        tracing::warn!("could not start the memory headroom log: {error}");
+    }
+}
+
 /// Reads the kernel's byte-valued `hw.memsize` property.
 #[cfg(target_os = "macos")]
 fn read_physical_bytes() -> Option<u64> {

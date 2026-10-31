@@ -130,6 +130,8 @@ fn start_session() -> Result<InstallLayout> {
         client_logs::capture(&layout);
         client_logs::capture_core(&layout);
         crash::logs_ready();
+        #[cfg(target_os = "ios")]
+        launcher_host::memory::spawn_headroom_log();
     });
     Ok(layout)
 }
