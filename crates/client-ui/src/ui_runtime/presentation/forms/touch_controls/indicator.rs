@@ -6,13 +6,14 @@ use crate::ui_runtime::presentation::primitives::rect;
 use semantic_input::TouchIndicator;
 use ui::{UiBlendMode, UiMesh, UiMeshBatch, UiMeshVertex, UiNodeId, UiVisual};
 
-/// Ring radius as a share of the screen height.
-const RADIUS: f32 = 0.045;
-/// Ring stroke width as a share of the ring radius.
-const STROKE: f32 = 0.14;
-/// Segments approximating each circle.
-const SEGMENTS: u32 = 48;
-const RING_COLOR: [u8; 4] = [255, 255, 255, 220];
+/// Ring radius as a share of the screen height, measured from a native client capture: a ring
+/// about 200 pixels across on a 924-pixel-tall screen.
+const RADIUS: f32 = 0.108;
+/// Ring stroke width as a share of the ring radius; the native ring is a thin line.
+const STROKE: f32 = 0.045;
+/// Segments approximating each circle, enough to stay round at this size.
+const SEGMENTS: u32 = 64;
+const RING_COLOR: [u8; 4] = [255, 255, 255, 200];
 const FILL_COLOR: [u8; 4] = [255, 255, 255, 235];
 
 impl UiPresentationRuntime {
