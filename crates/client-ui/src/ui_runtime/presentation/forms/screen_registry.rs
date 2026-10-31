@@ -23,6 +23,7 @@ fn compose() -> ScreenRegistry {
     catalog.layer_builtin(ui_screens::always_sprint_setting::install);
     catalog.layer_builtin(ui_screens::vsync_setting::install);
     catalog.layer_builtin(ui_screens::vrr_setting::install);
+    catalog.layer_builtin(ui_screens::controller_icons_setting::install);
     catalog.layer_builtin(ui_screens::motion_blur_setting::install);
     catalog.layer_builtin(ui_screens::smaa_setting::install);
     catalog.layer_builtin(ui_screens::view_bobbing_setting::install);

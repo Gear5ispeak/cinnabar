@@ -306,9 +306,10 @@ const fn touch_scheme_choice(scheme: semantic_input::TouchScheme) -> SettingChoi
         (TouchMovement::Joystick, TouchAim::Tap) => {
             ("touch_scheme_modern_touch", "Modern: joystick and tap")
         }
-        (TouchMovement::Joystick, TouchAim::Crosshair) => {
-            ("touch_scheme_modern_split", "Modern: joystick and crosshair")
-        }
+        (TouchMovement::Joystick, TouchAim::Crosshair) => (
+            "touch_scheme_modern_split",
+            "Modern: joystick and crosshair",
+        ),
     };
     SettingChoice { name, label }
 }
@@ -527,6 +528,8 @@ settings! {
         [(SettingPanel::Controller, 3)], [], None, None;
     SwapGamepadXyButtons => "swap_gamepad_xy_buttons", toggle("options.swapGamepadXY", false),
         [(SettingPanel::Controller, 4)], [], None, None;
+    ControllerIcons => "controller_icons", dropdown("Controller Button Icons", super::control_bindings::CONTROLLER_ICON_CHOICES, super::control_bindings::ControllerIcons::Xbox as i32),
+        [(SettingPanel::Controller, 5)], [], None, None;
     CinnabarVisible => "cinnabar_visible", toggle("Show me as a Cinnabar player", true),
         [(SettingPanel::GeneralNetwork, 0)], [], None, None;
     CinnabarBadges => "show_cinnabar_badges", toggle("Show Cinnabar badges", true),

@@ -355,6 +355,9 @@ impl SettingsOptions {
         {
             return label.clone();
         }
+        if let Some(name) = self.controller_icons().button_name(control) {
+            return name.to_owned();
+        }
         key_name(control)
     }
 

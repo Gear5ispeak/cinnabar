@@ -10,6 +10,33 @@ use launcher::menu::{MenuAction, MenuView};
 
 /// Inserts a registry-backed dropdown after an existing advanced Video control.
 pub(super) fn install_video_dropdown(catalog: &mut json_ui::Catalog, id: SettingId, after: &str) {
+    install_dropdown(
+        catalog,
+        id,
+        "general_section",
+        "advanced_graphics_options_section",
+        after,
+    );
+}
+
+/// Inserts a registry-backed dropdown after an existing Controller settings control.
+pub(super) fn install_controller_dropdown(
+    catalog: &mut json_ui::Catalog,
+    id: SettingId,
+    after: &str,
+) {
+    install_dropdown(catalog, id, "controls_section", "controller_section", after);
+}
+
+/// Inserts a registry-backed dropdown after `after` in `section`'s controls, inside the
+/// vanilla UI file whose namespace is `namespace`.
+fn install_dropdown(
+    catalog: &mut json_ui::Catalog,
+    id: SettingId,
+    namespace: &str,
+    section: &str,
+    after: &str,
+) {
     let option = id.definition();
     let SettingKind::Dropdown(choices) = option.kind else {
         return;
@@ -27,16 +54,16 @@ pub(super) fn install_video_dropdown(catalog: &mut json_ui::Catalog, id: Setting
         })
         .collect::<Vec<_>>();
     let overlay = serde_json::json!({
-        "namespace": "general_section",
+        "namespace": namespace,
         format!("{name}_dropdown_content@settings_common.option_radio_dropdown_group"): {
             "$radio_buttons": choices
         },
-        "advanced_graphics_options_section": {
+        section: {
             "modifications": [{
                 "array_name": "controls", "operation": "insert_after", "control_name": after,
                 "value": [{ format!("{name}@settings_common.option_dropdown"): {
                     "$option_label": option.label,
-                    "$dropdown_content": format!("general_section.{name}_dropdown_content"),
+                    "$dropdown_content": format!("{namespace}.{name}_dropdown_content"),
                     "$dropdown_area": "content_area", "$dropdown_name": format!("{name}_dropdown"),
                     "$option_enabled_binding_name": format!("#{name}_dropdown_enabled"),
                     "$options_dropdown_toggle_label_binding": format!("#{name}_dropdown_toggle_label")

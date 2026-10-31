@@ -16,6 +16,7 @@ pub mod container_data;
 pub mod container_kinds;
 pub mod container_source;
 pub mod containers;
+pub mod controller_icons_setting;
 pub mod credits_content;
 mod credits_renderer;
 pub mod credits_screen;

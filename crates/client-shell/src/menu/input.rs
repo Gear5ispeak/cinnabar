@@ -541,6 +541,19 @@ pub fn drive_menu_input(
             menu.open_pause();
             crate::physical_input::release_cursor(&mut cursor);
             keys.reset_all();
+        } else if start_pressed(&gamepads)
+            && !crate::screen_policy::absorbs_input(
+                &player_runtime,
+                runtime.as_deref().map(|runtime| &runtime.0),
+                Some(&menu),
+                Some(&presentation),
+            )
+        {
+            // The controller's Menu button (Options on PlayStation) pauses like Escape, but only
+            // over gameplay: an open inventory, chat or form keeps it.
+            menu.open_pause();
+            menu.input_mode = MenuInputMode::Gamepad;
+            crate::physical_input::release_cursor(&mut cursor);
         } else if cursor.grab_mode == CursorGrabMode::None
             && mouse_buttons.just_pressed(MouseButton::Left)
             && window
@@ -810,6 +823,17 @@ pub fn drive_menu_input(
     {
         menu.place_caret(byte);
     }
+    // Menu on the pause screen resumes, as vanilla's controller toggles pause with one button.
+    if start_pressed(&gamepads)
+        && menu.screen() == launcher::menu::MenuScreen::Pause
+        && menu.dialog.is_none()
+    {
+        menu.activate(launcher::menu::MenuAction::PauseResume);
+        keyboard_messages.clear();
+        keys.reset_all();
+        mouse_buttons.reset_all();
+        return;
+    }
     for gamepad in &gamepads {
         if gamepad.get_just_pressed().next().is_some() {
             menu.input_mode = MenuInputMode::Gamepad;
@@ -949,6 +973,14 @@ pub fn drive_menu_input(
     }
     keys.reset_all();
     mouse_buttons.reset_all();
+}
+
+/// Whether any controller pressed its Menu button this frame: Start on Xbox, Options on
+/// PlayStation. The button is fixed, as in vanilla, so it is not read from the bindings.
+fn start_pressed(gamepads: &Query<&Gamepad>) -> bool {
+    gamepads
+        .iter()
+        .any(|gamepad| gamepad.just_pressed(GamepadButton::Start))
 }
 
 #[cfg(test)]

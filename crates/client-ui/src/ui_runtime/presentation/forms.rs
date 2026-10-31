@@ -5,6 +5,8 @@ mod chat_links_tests;
 #[cfg(test)]
 mod chat_position_tests;
 pub mod chat_screen;
+#[cfg(test)]
+mod controller_icons_tests;
 pub mod containers;
 pub mod credits_screen;
 mod data_driven_screen;

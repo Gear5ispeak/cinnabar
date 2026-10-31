@@ -174,6 +174,65 @@ mod tests {
         assert!(app.world().resource::<MenuRuntime>().is_visible());
     }
 
+    #[test]
+    fn controller_menu_button_pauses_gameplay_and_resumes_from_pause() {
+        let mut menu = MenuRuntime::new(true, 2, "Player".into());
+        menu.show_world();
+        let mut app = harness(menu);
+        let pad = app.world_mut().spawn(Gamepad::default()).id();
+        let set_start = |app: &mut App, held: bool| {
+            let mut gamepad = app.world_mut().get_mut::<Gamepad>(pad).unwrap();
+            gamepad.digital_mut().clear();
+            if held {
+                gamepad.digital_mut().press(GamepadButton::Start);
+            } else {
+                gamepad.digital_mut().release(GamepadButton::Start);
+            }
+        };
+
+        set_start(&mut app, true);
+        app.update();
+        let menu = app.world().resource::<MenuRuntime>();
+        assert!(menu.is_visible(), "Start opens pause over gameplay");
+        assert_eq!(menu.screen(), MenuScreen::Pause);
+        assert!(menu.view().gamepad_input, "pause opened by a controller shows its focus");
+
+        set_start(&mut app, true);
+        app.update();
+        assert!(
+            app.world().resource::<MenuRuntime>().is_visible(),
+            "holding the press that opened pause does not also resume"
+        );
+
+        set_start(&mut app, false);
+        app.update();
+        set_start(&mut app, true);
+        app.update();
+        assert!(
+            !app.world().resource::<MenuRuntime>().is_visible(),
+            "a second Start resumes"
+        );
+    }
+
+    #[test]
+    fn controller_menu_button_does_not_pause_over_settings() {
+        let mut menu = MenuRuntime::new(true, 2, "Player".into());
+        menu.show_world();
+        menu.open_pause();
+        menu.activate(MenuAction::PauseSettings);
+        let mut app = harness(menu);
+        let pad = app.world_mut().spawn(Gamepad::default()).id();
+        app.world_mut()
+            .get_mut::<Gamepad>(pad)
+            .unwrap()
+            .digital_mut()
+            .press(GamepadButton::Start);
+        app.update();
+        let menu = app.world().resource::<MenuRuntime>();
+        assert_eq!(menu.screen(), MenuScreen::Settings);
+        assert!(menu.is_visible());
+    }
+
     /// Runs production menu input with an original font fixture and a focused window.
     fn harness(menu: MenuRuntime) -> App {
         let mut app = App::new();

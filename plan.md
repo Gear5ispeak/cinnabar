@@ -1208,7 +1208,12 @@ The setup and crash windows use Apple's Game Controller framework on macOS for c
 buttons and hotplugging, including controllers unavailable through HID compatibility.
 HID-only controllers retain their existing backend, with duplicate native delivery suppressed.
 Gameplay enables Bevy's controller device plugin. Physical Xbox controller acceptance on
-macOS, including gameplay input, remains incomplete.
+macOS, including gameplay input, remains incomplete. The controller's Menu button (Options on
+PlayStation) opens pause over gameplay and resumes from it. Controller settings choose Xbox,
+PlayStation 4 or PlayStation 5 button art for the layout rows. Stick look keeps the analog
+slider curve but its magnitude (120 degrees per second at the default slider) is provisional
+and still needs native measurement; a DualShock 4 on Windows confirmed the earlier magnitude
+was far too slow.
 
 Linux crash capture tolerates unreadable thread stacks and preserves available registers
 and other threads' stacks.

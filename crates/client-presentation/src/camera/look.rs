@@ -8,7 +8,12 @@ use semantic_input::{DEFAULT_MOUSE_SENSITIVITY, InputMode};
 const DEFAULT_GAME_SENSITIVITY: f32 = 0.628;
 /// Writes closer than this to a vanilla float option's value are ignored.
 const OPTION_EPSILON: f32 = 0.001;
+/// Degrees one touch look unit turns at the default slider.
 const ANALOG_DEGREES_PER_UNIT_AT_UNIT_CURVE: f32 = 0.15;
+/// Degrees a fully deflected stick turns per 60 Hz frame at the default slider. Provisional:
+/// it sets the default to 120 degrees per second and 100% to about 490, pending native
+/// measurement.
+const STICK_DEGREES_PER_FRAME_AT_UNIT_CURVE: f32 = 2.0;
 /// Multiplier at which the analog sensitivity slider reads 100%.
 const SLIDER_FULL_MULTIPLIER: f32 = 2.0;
 const ANALOG_REFERENCE_HZ: f32 = 60.0;
@@ -70,30 +75,50 @@ pub fn mouse_turn_degrees(counts: Vec2, window_width: u32, game_sensitivity: f32
     counts / window_width as f32 * curve * 0.3
 }
 
-/// Degrees per analog look unit for a sensitivity slider fraction in `0..=1`.
+/// The analog slider curve for a slider fraction in `0..=1`: 1 at the default 50%, about 4.1
+/// at 100%.
 #[must_use]
-fn analog_degrees_per_look_unit(slider: f32) -> f32 {
+fn analog_slider_curve(slider: f32) -> f32 {
     let slider = if slider.is_finite() {
         slider.clamp(0.0, 1.0)
     } else {
         0.5
     };
     let curve = slider * 0.6 + 0.2;
-    curve * curve * curve * 8.0 * ANALOG_DEGREES_PER_UNIT_AT_UNIT_CURVE
+    curve * curve * curve * 8.0
 }
 
-/// Factor turning the router's already-multiplied analog look delta into degrees.
+/// Degrees per analog look unit for a sensitivity slider fraction in `0..=1`.
+#[must_use]
+fn analog_degrees_per_look_unit(slider: f32) -> f32 {
+    analog_slider_curve(slider) * ANALOG_DEGREES_PER_UNIT_AT_UNIT_CURVE
+}
+
+/// Turns the router's already-multiplied look delta into degrees, `unit` degrees per look unit
+/// at the default slider.
 ///
 /// The router scales raw analog input by the linear multiplier; dividing it back out
 /// lets the slider curve, not the multiplier, set the final angle.
-#[must_use]
-pub fn analog_degrees_per_routed_unit(multiplier: f32) -> f32 {
+fn degrees_per_routed_unit(multiplier: f32, unit: f32) -> f32 {
     let multiplier = if multiplier.is_finite() && multiplier > 0.0 {
         multiplier
     } else {
         1.0
     };
-    analog_degrees_per_look_unit(multiplier / SLIDER_FULL_MULTIPLIER) / multiplier
+    analog_slider_curve(multiplier / SLIDER_FULL_MULTIPLIER) * unit / multiplier
+}
+
+/// Factor turning the router's already-multiplied touch look delta into degrees.
+#[must_use]
+pub fn analog_degrees_per_routed_unit(multiplier: f32) -> f32 {
+    degrees_per_routed_unit(multiplier, ANALOG_DEGREES_PER_UNIT_AT_UNIT_CURVE)
+}
+
+/// Factor turning the router's already-multiplied stick look delta, one unit per fully
+/// deflected 60 Hz frame, into degrees.
+#[must_use]
+pub fn stick_degrees_per_routed_unit(multiplier: f32) -> f32 {
+    degrees_per_routed_unit(multiplier, STICK_DEGREES_PER_FRAME_AT_UNIT_CURVE)
 }
 
 /// Analog sticks report a per-frame delta; scale it so turn rate does not follow frame rate.
@@ -215,6 +240,22 @@ mod tests {
         );
         assert!((analog_degrees_per_routed_unit(1.0) - 0.15).abs() < 1e-6);
         assert!(analog_degrees_per_routed_unit(f32::NAN).is_finite());
+    }
+
+    /// Degrees per second a fully deflected stick turns at 60 Hz for a slider percentage.
+    fn stick_turn_rate(percent: f32) -> f32 {
+        let multiplier = percent / 50.0;
+        multiplier * stick_degrees_per_routed_unit(multiplier) * ANALOG_REFERENCE_HZ
+    }
+
+    #[test]
+    fn stick_look_turns_at_usable_rates_without_changing_touch() {
+        assert!((stick_turn_rate(50.0) - 120.0).abs() < 1e-3);
+        assert!((stick_turn_rate(100.0) - 491.52).abs() < 1e-2);
+        assert!(stick_turn_rate(20.0) < stick_turn_rate(50.0));
+        assert!(stick_turn_rate(85.0) > 300.0);
+        assert!(stick_degrees_per_routed_unit(f32::NAN).is_finite());
+        assert!((analog_degrees_per_routed_unit(1.0) - 0.15).abs() < 1e-6);
     }
 
     #[test]

@@ -56,15 +56,18 @@ pub(super) fn bind(view: &MenuView, data: &mut DataSource, translate: &dyn Fn(&s
                     String::new()
                 };
                 let icon = if capturing {
-                    ""
+                    String::new()
                 } else {
-                    control.map(gamepad_icon).unwrap_or_default()
+                    let icons = view.settings_options.controller_icons();
+                    control
+                        .map(|control| gamepad_icon(control, icons))
+                        .unwrap_or_default()
                 };
                 CollectionItem::default()
                     .with("#keymapping_name", Scalar::Text(name.clone()))
                     .with("#audible_keymapping_name", Scalar::Text(name))
                     .with("#binding_button_text", Scalar::Text(key))
-                    .with("#binding_icon_sprite", Scalar::Text(icon.to_owned()))
+                    .with("#binding_icon_sprite", Scalar::Text(icon))
             })
             .collect();
         data.set_collection(collection, rows);

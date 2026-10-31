@@ -464,3 +464,69 @@ fn a_loaded_event_badge_does_not_trap_gamepad_navigation() {
             .any(|action| Some(action) == view.focused_action)
     );
 }
+
+/// Presses and releases one controller button through the input system, then repaints.
+fn pad(app: &mut App, pad: Entity, button: GamepadButton) {
+    app.world_mut()
+        .get_mut::<Gamepad>(pad)
+        .unwrap()
+        .digital_mut()
+        .press(button);
+    app.update();
+    {
+        let mut gamepad = app.world_mut().get_mut::<Gamepad>(pad).unwrap();
+        gamepad.digital_mut().release(button);
+        gamepad.digital_mut().clear();
+    }
+    draw(app);
+}
+
+#[test]
+fn gamepad_reaches_and_selects_the_xbox_icon_choice_from_playstation() {
+    use launcher::menu::settings_options::{ControllerIcons, SettingId};
+
+    let Some((mut app, _)) =
+        fixture("gamepad_reaches_and_selects_the_xbox_icon_choice_from_playstation")
+    else {
+        return;
+    };
+    let index = SettingId::ControllerIcons.index() as u16;
+    {
+        let mut menu = app.world_mut().resource_mut::<MenuRuntime>();
+        menu.activate(MenuAction::Navigate(MenuScreen::Settings));
+        menu.activate(MenuAction::SettingsSection(
+            client_ui::test_support::settings_section_index("controller_and_switch_forced_index")
+                .unwrap(),
+        ));
+        menu.set_option(index, ControllerIcons::Ps4 as i32);
+    }
+    draw(&mut app);
+    let gamepad = app.world_mut().spawn(Gamepad::default()).id();
+    app.world_mut()
+        .resource_mut::<MenuRuntime>()
+        .focus_pointer(MenuAction::SettingsDropdown(index));
+    pad(&mut app, gamepad, GamepadButton::South);
+    let view = app.world().resource::<MenuRuntime>().view();
+    assert_eq!(view.settings.dropdown, Some(index), "Cross opens the icon list");
+    let opened_on = view.focused_action;
+    eprintln!("icon list opened with focus on {opened_on:?}");
+    let toward_xbox = if opened_on == Some(MenuAction::SettingsOption(index, 1)) {
+        GamepadButton::DPadUp
+    } else {
+        GamepadButton::DPadDown
+    };
+    pad(&mut app, gamepad, toward_xbox);
+    let view = app.world().resource::<MenuRuntime>().view();
+    eprintln!("after {toward_xbox:?} focus is on {:?}", view.focused_action);
+    assert_eq!(
+        view.focused_action,
+        Some(MenuAction::SettingsOption(index, ControllerIcons::Xbox as i32)),
+        "one D-pad step from {opened_on:?} reaches Xbox"
+    );
+    pad(&mut app, gamepad, GamepadButton::South);
+    let menu = app.world().resource::<MenuRuntime>();
+    assert_eq!(
+        menu.settings_options.controller_icons(),
+        ControllerIcons::Xbox
+    );
+}
