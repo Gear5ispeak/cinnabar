@@ -28,6 +28,8 @@ mod hud_tools;
 #[cfg(not(target_arch = "wasm32"))]
 mod install_layout;
 mod interaction_authority;
+#[cfg(target_os = "ios")]
+mod ios_gamepad;
 mod interaction_override;
 mod item_use;
 #[cfg(not(target_arch = "wasm32"))]

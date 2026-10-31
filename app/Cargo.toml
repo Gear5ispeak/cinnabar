@@ -167,6 +167,10 @@ objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSRunLoop", "NSString"] }
 objc2-quartz-core = { version = "0.3", default-features = false, features = ["std", "CADisplayLink", "CAFrameRateRange", "CALayer", "CAMetalLayer", "objc2-metal"] }
 
+# Apple's Game Controller framework supplies gamepads on iOS, where gilrs has no backend.
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2-game-controller = { version = "0.3.2", default-features = false, features = ["std", "GCController", "GCControllerAxisInput", "GCControllerButtonInput", "GCControllerDirectionPad", "GCControllerElement", "GCDevice", "GCExtendedGamepad", "GCPhysicalInputProfile"] }
+
 [target.'cfg(windows)'.dependencies]
 raw-window-handle = "0.6.2"
 windows-sys = { version = "0.61", features = [

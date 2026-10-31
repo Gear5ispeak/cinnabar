@@ -31,6 +31,12 @@
   <key>LSApplicationCategoryType</key><string>public.app-category.games</string>
   <key>LSSupportsGameMode</key><true/>
   <key>GCSupportsGameMode</key><true/>
+  <!-- Controllers drive gameplay and menus through the extended gamepad profile. -->
+  <key>GCSupportsControllerUserInteraction</key><true/>
+  <key>GCSupportedGameControllers</key>
+  <array>
+    <dict><key>ProfileName</key><string>ExtendedGamepad</string></dict>
+  </array>
   <key>UISupportedInterfaceOrientations</key>
   <array>
     <string>UIInterfaceOrientationLandscapeLeft</string>

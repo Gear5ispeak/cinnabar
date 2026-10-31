@@ -83,8 +83,10 @@ They behave as on other platforms but run their callbacks more slowly.
 The same on-screen touch controls and four control schemes as on Android (Settings > Touch >
 Control scheme): Classic D-pad or Modern stick, each aiming where you tap or at the crosshair.
 Re-run `make assets` and `add-assets.py` for a new IPA so the D-pad's arrows are included. Menu text fields
-and chat ask iOS for its on-screen keyboard; nothing yet moves a field the keyboard covers. A Bluetooth
-keyboard and mouse work only as far as winit's UIKit backend delivers their input.
+and chat ask iOS for its on-screen keyboard; nothing yet moves a field the keyboard covers.
+Bluetooth controllers the Game Controller framework supports, such as DualShock 4, DualSense
+and Xbox controllers, play with the same bindings as on desktop; pair one in iOS Settings first.
+A Bluetooth keyboard and mouse work only as far as winit's UIKit backend delivers their input.
 
 ## Not supported
 

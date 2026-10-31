@@ -607,6 +607,8 @@ pub fn run(args: args::ClientArgs) -> Result<()> {
     crate::thread_budget::ThreadBudget::configure_render_thread(&mut app);
     #[cfg(any(target_os = "macos", target_os = "ios"))]
     crate::frame_pacing::display_link::install(&mut app);
+    #[cfg(target_os = "ios")]
+    crate::ios_gamepad::install(&mut app);
     #[cfg(target_os = "macos")]
     crate::frame_pacing::macos_presentation::install(&mut app);
     app.add_systems(Update, crate::window_icon::apply);
