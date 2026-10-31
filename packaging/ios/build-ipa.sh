@@ -113,4 +113,14 @@ cp "$out/icons/icon-167.png" "$app/AppIcon83.5x83.5@2x~ipad.png"
 codesign --force --sign - --timestamp=none "$app"
 codesign --verify --strict "$app"
 (cd "$stage" && zip -q -r "$ipa" Payload)
+
+# The same app requesting the Increased Memory Limit entitlement in its own signature, for an
+# App ID that has the capability: sideloading tools keep requested entitlements the profile
+# grants. Without the capability such an install may refuse to launch, so it stays separate.
+memory_ipa="${ipa%-unsigned.ipa}-memory-unsigned.ipa"
+codesign --force --sign - --timestamp=none --entitlements "$here/increased-memory.entitlements" "$app"
+codesign --verify --strict "$app"
+rm -f "$memory_ipa"
+(cd "$stage" && zip -q -r "$memory_ipa" Payload)
+echo "$memory_ipa"
 echo "$ipa"

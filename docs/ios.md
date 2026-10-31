@@ -51,7 +51,10 @@ iOS stops an app that passes its memory limit, about 3.3 GB on a 12 GB iPhone, a
 send large resource packs can pass it while the world loads. The App ID's **Increased Memory
 Limit** capability raises the limit. iloader's Import IPA leaves it off, but once it is on for
 the App ID, later installs keep it; `isideload`'s `install_app` turns it on when its
-`increased_memory_limit` argument is true. iOS ends an app at its limit without a crash report the
+`increased_memory_limit` argument is true. The workflow also builds `Cinnabar-<version>-memory-unsigned.ipa`, whose
+app requests the entitlement in its own signature; some installers keep only the entitlements
+the app requests, so the limit rises only with both the capability and this IPA. Install it only
+once the App ID has the capability, since iOS may refuse to launch it otherwise. iOS ends an app at its limit without a crash report the
 app can write, so the client log records the remaining memory budget as it falls, and an exit
 for memory shows as the budget nearing zero; iOS itself files a `JetsamEvent` report under
 **Settings > Privacy & Security > Analytics & Improvements > Analytics Data**.
