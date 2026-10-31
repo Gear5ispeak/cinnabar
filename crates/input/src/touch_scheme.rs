@@ -330,6 +330,13 @@ impl TouchGestures {
             .map(|gesture| gesture.position)
     }
 
+    /// The newest finger on the look surface, whatever it is doing, for the ring that follows
+    /// it while it looks around too.
+    #[must_use]
+    pub fn newest_position(&self) -> Option<[f32; 2]> {
+        self.gestures.last().map(|gesture| gesture.position)
+    }
+
     fn find(&mut self, contact_id: u64) -> Option<&mut Gesture> {
         self.gestures
             .iter_mut()
@@ -447,10 +454,13 @@ mod tests {
     fn moving_before_the_hold_only_looks() {
         let mut gestures = TouchGestures::default();
         gestures.begin(3, [0.5, 0.5], 0.0);
-        gestures.move_to(3, [0.5 + DRAG_DISTANCE * 2.0, 0.5]);
+        let moved = [0.5 + DRAG_DISTANCE * 2.0, 0.5];
+        gestures.move_to(3, moved);
         gestures.advance(HOLD_SECONDS * 2.0);
         assert_eq!(gestures.holding().count(), 0);
         assert_eq!(gestures.aim_point(), None);
+        // The ring still follows the looking finger.
+        assert_eq!(gestures.newest_position(), Some(moved));
         assert_eq!(gestures.end(3, HOLD_SECONDS * 2.0), None);
     }
 

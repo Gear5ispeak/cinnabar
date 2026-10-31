@@ -48,7 +48,7 @@ impl LookGestures<'_, '_> {
 
     /// Turns this frame's still look-surface fingers into action contacts for the router.
     /// `held` are the fingers still down and `lifted` those that rose this frame. Returns the
-    /// break ring to draw: at the acting finger in tap schemes, or the crosshair in crosshair
+    /// break ring to draw: under the finger in tap schemes, or on the crosshair in crosshair
     /// schemes, filled as far as the current break has progressed.
     pub(crate) fn route(
         &mut self,
@@ -105,13 +105,15 @@ impl LookGestures<'_, '_> {
                 .then(|| state.gestures.aim_point().or(lingering))
                 .flatten();
         }
-        let finger = state.gestures.aim_point()?;
+        // In tap schemes the ring stays under the newest finger while it is down, looking around
+        // included; crosshair schemes show it on the crosshair only while a finger can act.
+        let position = match scheme.aim {
+            TouchAim::Tap => state.gestures.newest_position()?,
+            TouchAim::Crosshair => state.gestures.aim_point().map(|_| [0.5, 0.5])?,
+        };
         let breaking = state.gestures.holding().next().is_some();
         Some(TouchIndicator {
-            position: match scheme.aim {
-                TouchAim::Tap => finger,
-                TouchAim::Crosshair => [0.5, 0.5],
-            },
+            position,
             progress: self
                 .mining
                 .as_ref()
